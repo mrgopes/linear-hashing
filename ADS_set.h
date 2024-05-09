@@ -29,8 +29,7 @@ public:
 
   class Bucket {
   public:
-    Key inhalt;
-    //size_t sz;
+    Key inhalt[N];
     Bucket* ueberlauf;
     ADS_set* parent;
 
@@ -47,7 +46,6 @@ public:
     }
 
     bool insert(Key item, bool allow_split = true) {
-      if (item == 0) return false;
       if (!full()) {
         for (size_t i {0}; i < N; i++) {
           if (inhalt[i] == item) return false;
