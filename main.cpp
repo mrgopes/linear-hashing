@@ -19,6 +19,17 @@ int main() {
   ht.insert(15);
   ht.insert(20);
 
+  ADS_set<double> sht{};
+
+  sht.insert(1.2);
+  sht.insert(1.2);
+  sht.insert(100029.1);
+  sht.insert(1);
+  sht.insert(998);
+
+
+
+
   std::cout << ht.size() << " " << ht.empty() << std::endl;
 
   return 0;
