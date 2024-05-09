@@ -29,7 +29,8 @@ public:
 
   class Bucket {
   public:
-    Key inhalt[N];
+    Key inhalt;
+    //size_t sz;
     Bucket* ueberlauf;
     ADS_set* parent;
 
@@ -45,22 +46,23 @@ public:
       }
     }
 
-    void insert(Key item, bool allow_split = true) {
-      if (item == 0) return;
+    bool insert(Key item, bool allow_split = true) {
+      if (item == 0) return false;
       if (!full()) {
         for (size_t i {0}; i < N; i++) {
+          if (inhalt[i] == item) return false;
+        }
+        for (size_t i {0}; i < N; i++) {
           if (!(inhalt[i])) {
-            std::cout << "Das item " << item << " wird eingefuegt zum Platz " << i << std::endl;
             inhalt[i] = item;
-            std::cout << "Tada: " << inhalt[i] << std::endl;
-            break;
+            return true;
           }
         }
       } else {
-        std::cout << "full" << "\n";
         if (!ueberlauf) ueberlauf = new Bucket(nullptr);
-        ueberlauf->insert(item);
+        bool result = ueberlauf->insert(item);
         if (allow_split) parent->global_split();
+        return result;
       }
     }
 
@@ -106,15 +108,15 @@ public:
   size_t max_sz;
   Bucket* inhalt;
   size_t nextToSplit;
+  size_t sz;
 
-  ADS_set(): d{0}, max_sz{2}, inhalt{new Bucket[2]}, nextToSplit{0} {
+  ADS_set(): d{0}, max_sz{2}, inhalt{new Bucket[2]}, nextToSplit{0}, sz{0} {
     inhalt->set_parent(this);
     inhalt[1].set_parent(this);
   }
 
   void global_split() {
     inhalt[nextToSplit].split();
-    std::cout << "Splitting " << nextToSplit << std::endl;
   }
 
   void split_weiter() {
@@ -149,17 +151,23 @@ public:
   ADS_set &operator=(std::initializer_list<key_type> ilist);
 
   size_type size() const {
-    return max_sz;
-  }                                              // PH1
-  bool empty() const;                                                  // PH1
+    return sz;
+  }
+  bool empty() const {
+    return sz == 0;
+  }
 
   std::pair<iterator,bool> insert(const key_type &key) {
     size_t wert {get_hash_wert(key, d)};
-    if (wert < nextToSplit) inhalt[get_hash_wert(key, d + 1)].insert(key);
-    else inhalt[wert].insert(key);
+    if (wert < nextToSplit) sz += inhalt[get_hash_wert(key, d + 1)].insert(key);
+    else sz += inhalt[wert].insert(key);
   }
 
-  template<typename InputIt> void insert(InputIt first, InputIt last); // PH1
+  template<typename InputIt> void insert(InputIt first, InputIt last) {
+    for (auto it {first}; it != last; ++it) {
+      insert(*it);
+    }
+  }
 
   void clear();
   size_type erase(const key_type &key);
