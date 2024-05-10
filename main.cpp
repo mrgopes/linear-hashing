@@ -4,7 +4,7 @@
 int main() {
   std::cout << "Hello, World!" << std::endl;
 
-  std::vector<int> v1 {1, 78, 390, 1020};
+  std::vector<int> v1 {8, 12, 4, 5, 2, 11, 15, 20};
 
   ADS_set<int> ht{};
 

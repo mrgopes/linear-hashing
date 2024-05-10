@@ -27,30 +27,24 @@ public:
 
   class Bucket {
   public:
-    Key* inhalt[N];
+    Key inhalt[N];
     Bucket* ueberlauf;
     ADS_set* parent;
 
     size_t sz;
 
-    Bucket(ADS_set* parent = nullptr): inhalt{new Key[N]}, ueberlauf{nullptr}, parent{parent} {
-      for (size_t i {N}; i < N; ++i) {
-        inhalt[i] = nullptr;
-      }
-    }
+    Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
 
     bool find(key_type key) const {
-      for (size_t i {0}; i < N; i++) {
-        if (inhalt[i] && key_equal{}(*(inhalt[i]), key)) return true;
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], key)) return true;
       }
-      if (ueberlauf != nullptr) {
-        Bucket* ueb {ueberlauf};
-        while (ueb != nullptr) {
-          for (size_t j {0}; j < N; j++) {
-            if (ueb->inhalt[j] && key_equal{}(*(ueb->inhalt[j]), key)) return true;
-          }
-          ueb = ueb->ueberlauf;
+      Bucket* ueb {ueberlauf};
+      while (ueb != nullptr) {
+        for (size_t j {0}; j < ueb->sz; j++) {
+          if (key_equal{}(ueb->inhalt[j], key)) return true;
         }
+        ueb = ueb->ueberlauf;
       }
       return false;
     }
@@ -67,16 +61,11 @@ public:
 
     bool insert(Key item, bool allow_split = true) {
       if (!full()) {
-        for (size_t i {0}; i < N; i++) {
-          if (inhalt[i] && key_equal{}(*(inhalt[i]), item)) return false;
+        for (size_t i {0}; i < sz; i++) {
+          if (key_equal{}(inhalt[i], item)) return false;
         }
-        for (size_t i {0}; i < N; i++) {
-          if (!(inhalt[i])) {
-            inhalt[i] = new Key{item};
-            return true;
-          }
-        }
-        return false;
+        inhalt[sz++] = item;
+        return true;
       } else {
         if (!ueberlauf) ueberlauf = new Bucket(nullptr);
         bool result = ueberlauf->insert(item);
@@ -86,34 +75,36 @@ public:
     }
 
     bool full() {
-      for (size_t i {0}; i < N; i++) {
-        if (inhalt[i] == nullptr) {
-          return false;
-        }
+      return sz == N;
+    }
+
+    void erase(size_t place) {
+      for (size_t i {place}; i < sz - 1; ++i) {
+        inhalt[i] = inhalt[i + 1];
       }
-      return true;
+      --sz;
     }
 
     void split() {
       if (!parent) return;
-      for (size_t i {0}; i < N; i++) {
-        if (get_hash_wert(*(inhalt[i]), parent->d + 1) != get_hash_wert(*(inhalt[i]), parent->d)) {
-          parent->inhalt[get_hash_wert(*(inhalt[i]), parent->d+1)].insert(*(inhalt[i]), false);
-          *(inhalt[i]) = {};
+      for (size_t i {0}; i < sz; i++) {
+        if (get_hash_wert(inhalt[i], parent->d + 1) != get_hash_wert(inhalt[i], parent->d)) {
+          parent->inhalt[get_hash_wert(inhalt[i], parent->d+1)].insert(inhalt[i], false);
+          erase(i);
         }
       }
       Bucket* ueb {ueberlauf};
       ueberlauf = nullptr;
       while (ueb != nullptr) {
-        for (size_t i {0}; i < N; i++) {
-          if (ueb->inhalt[i] == 0) continue;
-          if (get_hash_wert(*(ueb->inhalt[i]), parent->d + 1) != get_hash_wert(*(ueb->inhalt[i]), parent->d)) {
-            parent->inhalt[get_hash_wert(*(ueb->inhalt[i]), parent->d+1)].insert(*(ueb->inhalt[i]), false);
-            *(ueb->inhalt[i]) = {};
+        for (size_t i {0}; i < ueb->sz; i++) {
+          if (get_hash_wert(ueb->inhalt[i], parent->d + 1) != get_hash_wert(ueb->inhalt[i], parent->d)) {
+            parent->inhalt[get_hash_wert(ueb->inhalt[i], parent->d+1)].insert(ueb->inhalt[i], false);
+            ueb->erase(i);
           } else {
-            this->insert(*(ueb->inhalt[i]), false);
+            this->insert(ueb->inhalt[i], false);
           }
         }
+        // ... vllt irgendwann mal den alten ueb deleten?
         ueb = ueb->ueberlauf;
       }
       parent->nextToSplit++;
@@ -179,7 +170,6 @@ public:
     return sz == 0;
   }
 
-  //PH1 todo
   /*
   std::pair<iterator,bool> insert(const key_type &key) {
     size_t wert {get_hash_wert(key, d)};
@@ -203,6 +193,7 @@ public:
     if (wert < nextToSplit) return inhalt[get_hash_wert(key, d + 1)].find((key));
     else return inhalt[wert].find((key));
   }
+
   //iterator find(const key_type &key) const;
 
   //void swap(ADS_set &other);
@@ -219,6 +210,7 @@ public:
   friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs);
    */
 
+  // TODO: schnell weg
   static size_t pow(size_t lop, size_t rop) {
     if (rop == 0) return 1;
     for (size_t i {0}; i < rop - 1; ++i) {
