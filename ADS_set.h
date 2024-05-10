@@ -33,7 +33,18 @@ public:
 
     size_t sz;
 
-    Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
+    explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
+
+    friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
+      os << "{ Bucket: ";
+      for (size_t i {0}; i < rop.sz; ++i) {
+        os << "[" << i << "] " << rop.inhalt[i] << ", ";
+      }
+      if (rop.ueberlauf != nullptr) {
+        os << "Ueberlauf: " << *(rop.ueberlauf);
+      }
+      return os << "}";
+    }
 
     bool find(key_type key) const {
       for (size_t i {0}; i < sz; i++) {
@@ -54,22 +65,20 @@ public:
     }
 
     Bucket(std::initializer_list<key_type> ilist): Bucket() {
-      for (const auto& i : ilist) {
-        insert(i);
-      }
+      insert(ilist);
     }
 
     bool insert(Key item, bool allow_split = true) {
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], item)) return false;
+      }
       if (!full()) {
-        for (size_t i {0}; i < sz; i++) {
-          if (key_equal{}(inhalt[i], item)) return false;
-        }
         inhalt[sz++] = item;
         return true;
       } else {
         if (!ueberlauf) ueberlauf = new Bucket(nullptr);
-        bool result = ueberlauf->insert(item);
-        if (allow_split) parent->global_split();
+        bool result = ueberlauf->insert(item, false);
+        if (result && allow_split) parent->global_split();
         return result;
       }
     }
@@ -78,8 +87,8 @@ public:
       return sz == N;
     }
 
-    void erase(size_t place) {
-      for (size_t i {place}; i < sz - 1; ++i) {
+    void erase(size_t pos) {
+      for (size_t i {pos}; i < sz - 1; ++i) {
         inhalt[i] = inhalt[i + 1];
       }
       --sz;
@@ -87,28 +96,28 @@ public:
 
     void split() {
       if (!parent) return;
-      for (size_t i {0}; i < sz; i++) {
-        if (get_hash_wert(inhalt[i], parent->d + 1) != get_hash_wert(inhalt[i], parent->d)) {
-          parent->inhalt[get_hash_wert(inhalt[i], parent->d+1)].insert(inhalt[i], false);
-          erase(i);
+      for (size_t i {sz}; i > 0; --i) {
+        if (get_hash_wert(inhalt[i - 1], parent->d + 1) != get_hash_wert(inhalt[i - 1], parent->d)) {
+          parent->inhalt[get_hash_wert(inhalt[i - 1], parent->d+1)].insert(inhalt[i - 1], false);
+          erase(i - 1);
         }
       }
       Bucket* ueb {ueberlauf};
       ueberlauf = nullptr;
       while (ueb != nullptr) {
-        for (size_t i {0}; i < ueb->sz; i++) {
-          if (get_hash_wert(ueb->inhalt[i], parent->d + 1) != get_hash_wert(ueb->inhalt[i], parent->d)) {
-            parent->inhalt[get_hash_wert(ueb->inhalt[i], parent->d+1)].insert(ueb->inhalt[i], false);
-            ueb->erase(i);
+        for (size_t i {ueb->sz}; i > 0; --i) {
+          if (get_hash_wert(ueb->inhalt[i - 1], parent->d + 1) != get_hash_wert(ueb->inhalt[i - 1], parent->d)) {
+            parent->inhalt[get_hash_wert(ueb->inhalt[i - 1], parent->d+1)].insert(ueb->inhalt[i - 1], false);
+            ueb->erase(i - 1);
           } else {
-            this->insert(ueb->inhalt[i], false);
+            this->insert(ueb->inhalt[i - 1], false);
           }
         }
         // ... vllt irgendwann mal den alten ueb deleten?
         ueb = ueb->ueberlauf;
       }
       parent->nextToSplit++;
-      if (parent->nextToSplit == pow(2, parent->d)) {
+      if (parent->nextToSplit == binpow(parent->d)) {
         parent->split_weiter();
       }
     }
@@ -132,14 +141,14 @@ public:
   void split_weiter() {
     nextToSplit = 0;
     d++;
-    max_sz = pow(2, d + 1);
+    max_sz = binpow(d + 1);
 
     Bucket* backup = inhalt;
-    inhalt = new Bucket[pow(2, d + 1)];
-    for (size_t i {0}; i < pow(2, d); ++i) {
+    inhalt = new Bucket[binpow(d + 1)];
+    for (size_t i {0}; i < binpow(d); ++i) {
       inhalt[i] = backup[i];
     }
-    for (size_t i {pow(2, d)}; i < pow(2, d+1); ++i) {
+    for (size_t i {binpow(d)}; i < binpow(d + 1); ++i) {
       inhalt[i].set_parent(this);
     }
   }
@@ -202,7 +211,10 @@ public:
   //const_iterator end() const;
 
   void dump(std::ostream &o = std::cerr) const {
-    o << "hi" << std::endl;
+    for (size_t i {0}; i < max_sz; ++i) {
+      o << inhalt[i] << std::endl;
+    }
+    o << "Size: " << size() << std::endl;
   }
 
   /*
@@ -210,13 +222,8 @@ public:
   friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs);
    */
 
-  // TODO: schnell weg
-  static size_t pow(size_t lop, size_t rop) {
-    if (rop == 0) return 1;
-    for (size_t i {0}; i < rop - 1; ++i) {
-      lop *= lop;
-    }
-    return lop;
+  static size_t binpow(size_t power) {
+    return 1 << power;
   }
 };
 
