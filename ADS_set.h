@@ -26,6 +26,14 @@ public:
   }
 
   class Bucket {
+  private:
+      void erase(size_t pos) {
+        if (pos >= sz || sz >= N) return;
+        for (size_t i {pos}; i < sz - 1; ++i) {
+          inhalt[i] = inhalt[i + 1];
+        }
+        --sz;
+      }
   public:
     Key inhalt[N];
     Bucket* ueberlauf;
@@ -85,13 +93,6 @@ public:
 
     bool full() {
       return sz == N;
-    }
-
-    void erase(size_t pos) {
-      for (size_t i {pos}; i < sz - 1; ++i) {
-        inhalt[i] = inhalt[i + 1];
-      }
-      --sz;
     }
 
     void split() {
