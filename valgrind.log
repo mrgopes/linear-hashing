@@ -1,0 +1,19 @@
+Hello, World!
+Vector size: 11
+Extendible Hashing<m,1>, g.Tiefe : 4, akt.Größe: 11
+Bucket 0, akt.BGröße: 1, l.Tiefe: 4 | 0 ;
+Bucket 1, akt.BGröße: 1, l.Tiefe: 4 | 1 ;
+Bucket 2, akt.BGröße: 1, l.Tiefe: 4 | 2 ;
+Bucket 3, akt.BGröße: 1, l.Tiefe: 3 | 3 ;
+Bucket 4, akt.BGröße: 1, l.Tiefe: 3 | 4 ;
+Bucket 5, akt.BGröße: 1, l.Tiefe: 3 | 5 ;
+Bucket 6, akt.BGröße: 1, l.Tiefe: 3 | 6 ;
+Bucket 7, akt.BGröße: 1, l.Tiefe: 3 | 7 ;
+Bucket 8, akt.BGröße: 1, l.Tiefe: 4 | 8 ;
+Bucket 9, akt.BGröße: 1, l.Tiefe: 4 | 9 ;
+Bucket 10, akt.BGröße: 1, l.Tiefe: 4 | 10 ;
+Bucket 11, akt.BGröße: 1, l.Tiefe: 3 | 3 ;
+Bucket 12, akt.BGröße: 1, l.Tiefe: 3 | 4 ;
+Bucket 13, akt.BGröße: 1, l.Tiefe: 3 | 5 ;
+Bucket 14, akt.BGröße: 1, l.Tiefe: 3 | 6 ;
+Bucket 15, akt.BGröße: 1, l.Tiefe: 3 | 7 ;
