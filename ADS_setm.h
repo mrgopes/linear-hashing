@@ -31,7 +31,7 @@ private:
       size_type idx {h(key)};
       Bucket *target = directory[idx];
       if(!count(key)){
-        if(target->is_full()){
+        if(target->is_full()) {
           if(target->t<d){
             split(target);
             append(key);

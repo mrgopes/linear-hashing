@@ -4,9 +4,12 @@
 int main() {
   std::cout << "Hello, World!" << std::endl;
 
-  std::vector<int> v1 {51, 47, 27, 7, 15, 31, 55};
+  //std::vector<size_t> v1 {17179869183, 8589934591};
 
-  ADS_set<int> ht{};
+  ADS_set<size_t, 1> ht{};
+  std::vector<size_t> v1 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+  //int **i {new int*[2147483648]};
 
   std::cout << "Vector size: " << v1.size() << std::endl;
 
