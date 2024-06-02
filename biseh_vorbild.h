@@ -1,0 +1,8 @@
+//
+// Created by mrgopes on 02.06.24.
+//
+
+#ifndef LINEARHASHING_BISEH_VORBILD_H
+#define LINEARHASHING_BISEH_VORBILD_H
+
+#endif //LINEARHASHING_BISEH_VORBILD_H
