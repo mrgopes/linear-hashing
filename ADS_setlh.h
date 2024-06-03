@@ -43,20 +43,24 @@ public:
 
         explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
 
-        Bucket(Bucket& b): Bucket(nullptr) {
+        /*Bucket(Bucket& b): Bucket(nullptr) {
           using std::swap;
           swap(inhalt, b.inhalt);
           swap(ueberlauf, b.ueberlauf);
           swap(parent, b.parent);
-        }
+        }*/
+
 
         // todo: sehr sus, please fix
-        Bucket& operator=(Bucket b) {
-          if (*this == b) return *this;
-          using std::swap;
-          swap(inhalt, b.inhalt);
-          swap(ueberlauf, b.ueberlauf);
-          swap(parent, b.parent);
+        Bucket& operator=(const Bucket& b) {
+          if (this == &b) return *this;
+          for (size_t i {0}; i < b.sz; ++i) {
+            inhalt[i] = b.inhalt[i];
+          }
+          if (b.ueberlauf && !ueberlauf) ueberlauf = new Bucket{};
+          *ueberlauf = *b.ueberlauf;
+          sz = b.sz;
+          parent = b.parent;
           return *this;
         }
 
@@ -65,7 +69,7 @@ public:
         }
 
         ~Bucket() {
-          //delete ueberlauf;
+          delete ueberlauf;
         }
 
         friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
@@ -143,7 +147,7 @@ public:
             // ... vllt irgendwann mal den alten ueb deleten?
             ueb = ueb->ueberlauf;
           }
-          //delete first_ueb;
+          delete first_ueb;
           parent->nextToSplit++;
           if (parent->nextToSplit == binpow(parent->d)) {
             parent->split_weiter();
@@ -179,7 +183,7 @@ public:
       for (size_t i {binpow(d)}; i < binpow(d + 1); ++i) {
         inhalt[i].set_parent(this);
       }
-      //delete[] backup;
+      delete[] backup;
     }
 
     ADS_set(std::initializer_list<key_type> ilist): ADS_set() {
@@ -206,7 +210,7 @@ public:
     size_t sz;
        */
 
-      //delete[] inhalt;
+      delete[] inhalt;
     }
 
     //ADS_set &operator=(const ADS_set &other);
