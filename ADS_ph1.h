@@ -43,31 +43,6 @@ public:
 
         explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
 
-        Bucket(Bucket& b): Bucket(nullptr) {
-          using std::swap;
-          swap(inhalt, b.inhalt);
-          swap(ueberlauf, b.ueberlauf);
-          swap(parent, b.parent);
-        }
-
-        // todo: sehr sus, please fix
-        Bucket& operator=(Bucket b) {
-          if (*this == b) return *this;
-          using std::swap;
-          swap(inhalt, b.inhalt);
-          swap(ueberlauf, b.ueberlauf);
-          swap(parent, b.parent);
-          return *this;
-        }
-
-        bool operator==(const Bucket& b) {
-          return ueberlauf == b.ueberlauf && parent == b.parent && inhalt == b.inhalt && sz == b.sz;
-        }
-
-        ~Bucket() {
-          //delete ueberlauf;
-        }
-
         friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
           os << "{ Bucket: ";
           for (size_t i {0}; i < rop.sz; ++i) {
@@ -129,7 +104,6 @@ public:
             }
           }
           Bucket* ueb {ueberlauf};
-          Bucket* first_ueb{ueberlauf};
           ueberlauf = nullptr;
           while (ueb != nullptr) {
             for (size_t i {ueb->sz}; i > 0; --i) {
@@ -143,7 +117,6 @@ public:
             // ... vllt irgendwann mal den alten ueb deleten?
             ueb = ueb->ueberlauf;
           }
-          //delete first_ueb;
           parent->nextToSplit++;
           if (parent->nextToSplit == binpow(parent->d)) {
             parent->split_weiter();
@@ -179,7 +152,6 @@ public:
       for (size_t i {binpow(d)}; i < binpow(d + 1); ++i) {
         inhalt[i].set_parent(this);
       }
-      //delete[] backup;
     }
 
     ADS_set(std::initializer_list<key_type> ilist): ADS_set() {
@@ -194,20 +166,9 @@ public:
       insert(first, last);
     }
 
-    ADS_set(const ADS_set &other): ADS_set() {
-      // .. fuegt jeden Element von other ins this hinzu
-    }
+    //ADS_set(const ADS_set &other);
 
-    ~ADS_set() {
-      /*     size_t d;
-    size_t max_sz;
-    Bucket* inhalt;
-    size_t nextToSplit;
-    size_t sz;
-       */
-
-      //delete[] inhalt;
-    }
+    //~ADS_set() {}
 
     //ADS_set &operator=(const ADS_set &other);
     //ADS_set &operator=(std::initializer_list<key_type> ilist);
@@ -228,7 +189,6 @@ public:
 
     template<typename InputIt> void insert(InputIt first, InputIt last) {
       for (auto it {first}; it != last; ++it) {
-//        dump();
         size_t wert {get_hash_wert(*it, d)};
         if (wert < nextToSplit) sz += inhalt[get_hash_wert(*it, d + 1)].insert(*it);
         else sz += inhalt[wert].insert(*it);
@@ -268,8 +228,8 @@ public:
     }
 };
 
-
-/*template <typename Key, size_t N>
+/*
+template <typename Key, size_t N>
 class ADS_set<Key,N>::ForwardIterator {
 public:
   using value_type = Key;
@@ -278,7 +238,7 @@ public:
   using pointer = const value_type *;
   using iterator_category = std::forward_iterator_tag;
 
-//  explicit ForwardIterator( impl defined);
+  explicit ForwardIterator(*//* implementation-dependent *//*);
   reference operator*() const;
   pointer operator->() const;
   ForwardIterator &operator++();
