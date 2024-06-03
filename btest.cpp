@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "ADS_set.h"
+#include "ADS_set_temp.h"
 
 #if !defined PH1 && !defined PH2
 #define PH2
