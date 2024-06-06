@@ -9,15 +9,15 @@
 template <typename Key, size_t N = 3/* default N (implementation-defined) */>
 class ADS_set {
 public:
-    class ForwardIterator /* iterator type (implementation-defined) */;
+    //class ForwardIterator /* iterator type (implementation-defined) */;
     using value_type = Key;
     using key_type = Key;
     using reference = value_type &;
     using const_reference = const value_type &;
     using size_type = size_t;
     using difference_type = std::ptrdiff_t;
-    using const_iterator = const ForwardIterator/* iterator type */;
-    using iterator = const_iterator;
+    //using const_iterator = const ForwardIterator/* iterator type */;
+    //using iterator = const_iterator;
     using key_equal = std::equal_to<key_type>;                       // Hashing
     using hasher = std::hash<key_type>;                              // Hashing
 
@@ -28,7 +28,7 @@ public:
     class Bucket {
     private:
         void erase(size_t pos) {
-          if (pos >= sz || pos >= N) return;
+          if (pos >= sz || sz >= N) return;
           for (size_t i {pos}; i < sz - 1; ++i) {
             inhalt[i] = inhalt[i + 1];
           }
@@ -42,6 +42,14 @@ public:
         size_t sz;
 
         explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
+
+        /*Bucket(Bucket& b): Bucket(nullptr) {
+          using std::swap;
+          swap(inhalt, b.inhalt);
+          swap(ueberlauf, b.ueberlauf);
+          swap(parent, b.parent);
+        }*/
+
 
         // todo: sehr sus, please fix
         Bucket& operator=(const Bucket& b) {
@@ -75,18 +83,18 @@ public:
           return os << "}";
         }
 
-        key_type* find(key_type key) {
+        bool find(key_type key) const {
           for (size_t i {0}; i < sz; i++) {
-            if (key_equal{}(inhalt[i], key)) return &(inhalt[i]);
+            if (key_equal{}(inhalt[i], key)) return true;
           }
           Bucket* ueb {ueberlauf};
           while (ueb != nullptr) {
             for (size_t j {0}; j < ueb->sz; j++) {
-              if (key_equal{}(ueb->inhalt[j], key)) return &ueb->inhalt[j];
+              if (key_equal{}(ueb->inhalt[j], key)) return true;
             }
             ueb = ueb->ueberlauf;
           }
-          return nullptr;
+          return false;
         }
 
         void set_parent(ADS_set* prnt) {
@@ -97,17 +105,17 @@ public:
           insert(ilist);
         }
 
-        key_type* insert(Key item, bool allow_split = true) {
+        bool insert(Key item, bool allow_split = true) {
           for (size_t i {0}; i < sz; i++) {
-            if (key_equal{}(inhalt[i], item)) return nullptr;
+            if (key_equal{}(inhalt[i], item)) return false;
           }
           if (!full()) {
             inhalt[sz++] = item;
-            return &(inhalt[sz]);
+            return true;
           } else {
             if (!ueberlauf) ueberlauf = new Bucket(nullptr);
-            key_type* result = ueberlauf->insert(item, false);
-            if (result != nullptr && allow_split) parent->global_split();
+            bool result = ueberlauf->insert(item, false);
+            if (result && allow_split) parent->global_split();
             return result;
           }
         }
@@ -144,35 +152,6 @@ public:
           if (parent->nextToSplit == binpow(parent->d)) {
             parent->split_weiter();
           }
-        }
-
-        // todo ueberlauf
-        size_t find_element(key_type b) {
-          for (size_t i{0}; i < sz; ++i) {
-            if (key_equal{}(inhalt[i], b)) return i;
-          }
-          if (ueberlauf) {
-            Bucket* ueb {ueberlauf};
-            while (ueb != nullptr) {
-              for (size_t i{0}; i < sz; ++i) {
-                if (key_equal{}(ueb->inhalt[i], b)) return i + N;
-              }
-              ueb = ueb->ueberlauf;
-            }
-          }
-          return sz;
-        }
-
-        size_t get_sz() {
-          size_t size{0};
-          Bucket* current{this};
-          while (current->ueberlauf) {
-            size += N;
-            current = current->ueberlauf;
-          }
-          size += current->sz;
-
-          return size;
         }
     };
 
@@ -224,6 +203,13 @@ public:
     }
 
     ~ADS_set() {
+      /*     size_t d;
+    size_t max_sz;
+    Bucket* inhalt;
+    size_t nextToSplit;
+    size_t sz;
+       */
+
       delete[] inhalt;
     }
 
@@ -237,20 +223,19 @@ public:
       return sz == 0;
     }
 
+    /*
     std::pair<iterator,bool> insert(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit) sz += (inhalt[get_hash_wert(key, d + 1)].insert(key) != nullptr);
-      else sz += (inhalt[wert].insert(key) != nullptr);
-
-      return {find(key), true};
-    }
+      if (wert < nextToSplit) sz += inhalt[get_hash_wert(key, d + 1)].insert(key);
+      else sz += inhalt[wert].insert(key);
+    }*/
 
     template<typename InputIt> void insert(InputIt first, InputIt last) {
       for (auto it {first}; it != last; ++it) {
 //        dump();
         size_t wert {get_hash_wert(*it, d)};
-        if (wert < nextToSplit) sz += inhalt[get_hash_wert(*it, d + 1)].insert(*it) != nullptr;
-        else sz += inhalt[wert].insert(*it) != nullptr;
+        if (wert < nextToSplit) sz += inhalt[get_hash_wert(*it, d + 1)].insert(*it);
+        else sz += inhalt[wert].insert(*it);
       }
     }
 
@@ -259,18 +244,11 @@ public:
 
     size_type count(const key_type &key) const {
       size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit) return inhalt[get_hash_wert(key, d + 1)].find((key)) != nullptr;
-      else return inhalt[wert].find((key)) != nullptr;
+      if (wert < nextToSplit) return inhalt[get_hash_wert(key, d + 1)].find((key));
+      else return inhalt[wert].find((key));
     }
 
-    iterator find(const key_type &key) const {
-      size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit)
-        return {
-        inhalt[get_hash_wert(key, d + 1)].find(key),
-        inhalt[get_hash_wert(key, d + 1)].find_element(key), get_hash_wert(key, d + 1), this};
-      else return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this};
-    }
+    //iterator find(const key_type &key) const;
 
     //void swap(ADS_set &other);
 
@@ -289,24 +267,13 @@ public:
     friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs);
      */
 
-    /*
-     * EXTRA
-     */
-
     static size_t binpow(size_t power) {
       return 1 << power;
-    }
-
-    size_t find_bucket(Bucket* b) {
-      for (size_t i{0}; i < max_sz; ++i) {
-        if (inhalt[i] == b) return i;
-      }
-      return max_sz;
     }
 };
 
 
-template <typename Key, size_t N>
+/*template <typename Key, size_t N>
 class ADS_set<Key,N>::ForwardIterator {
 public:
   using value_type = Key;
@@ -314,49 +281,15 @@ public:
   using reference = const value_type &;
   using pointer = const value_type *;
   using iterator_category = std::forward_iterator_tag;
-private:
-  pointer ptr;
-  const ADS_set* parent;
-  size_t counter;
-  size_t bucket_counter;
-  size_t count;
 
-public:
-
-  explicit ForwardIterator():
-    ptr{nullptr}, counter{0}, bucket_counter{0}, count{0}, parent{nullptr}  {}
-
-  ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
-      ptr{val}, counter{counter}, bucket_counter{bucket_counter}, parent{parent}  {}
-  reference operator*() const { return *ptr; }
-  pointer operator->() const { return *ptr; }
-  ForwardIterator &operator++() {
-  }
-  ForwardIterator operator++(int) {
-    if (counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
-      ++counter;
-    } else {
-      counter = 0;
-      bucket_counter++;
-      while (bucket_counter != parent->max_sz && counter > parent->inhalt[bucket_counter].get_sz() - 1) {
-        counter = 0;
-        ++bucket_counter;
-      }
-    }
-    int temp_counter{counter};
-    Bucket* target_b {&(parent->inhalt[bucket_counter])};
-    if (counter >= target_b->sz) {
-      do {
-        temp_counter -= N;
-        target_b = parent->inhalt[bucket_counter].ueberlauf;
-      } while (temp_counter >= target_b->sz);
-    }
-    ptr = target_b->inhalt + temp_counter;
-    return *this;
-  }
+//  explicit ForwardIterator( impl defined);
+  reference operator*() const;
+  pointer operator->() const;
+  ForwardIterator &operator++();
+  ForwardIterator operator++(int);
   friend bool operator==(const ForwardIterator &lhs, const ForwardIterator &rhs);
   friend bool operator!=(const ForwardIterator &lhs, const ForwardIterator &rhs);
-};
+};*/
 
 template <typename Key, size_t N>
 void swap(ADS_set<Key,N> &lhs, ADS_set<Key,N> &rhs) { lhs.swap(rhs); }
