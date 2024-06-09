@@ -16,13 +16,22 @@ int main() {
     ht.insert(i);
   }
 
-  ht.dump();
+  //ht.dump();
 
-  auto it = ht.find(0);
+//  auto it = ht.begin();
 
-  for (int i {0}; i < 99; ++i) {
-    it++;
-    std::cout << *it << std::endl;
+//  for (; it != ht.end(); it++) {
+//    std::cout << *it << std::endl;
+//  }
+
+  //std::cout << *it << std::endl;
+
+  //it = ht.end();
+
+//  std::cout << *(it++) << std::endl;
+//
+  for (const auto& i : ht) {
+    std::cout << i << std::endl;
   }
 
   //int **i {new int*[2147483648]};
@@ -31,7 +40,7 @@ int main() {
 
 //  ht.insert(v1.begin(), v1.end());
 
-  ht.dump(std::cout);
+//  ht.dump(std::cout);
 
   return 0;
 }

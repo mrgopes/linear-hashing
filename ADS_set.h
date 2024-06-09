@@ -89,6 +89,25 @@ public:
           return nullptr;
         }
 
+        key_type* first() {
+          return &(inhalt[0]);
+        }
+
+        key_type* last() {
+          if (ueberlauf) {
+            Bucket* temp {ueberlauf};
+            while (temp != nullptr) {
+              if (temp->ueberlauf) {
+                temp = temp->ueberlauf;
+              } else {
+                return &(inhalt[temp->sz]);
+              }
+            }
+          } else {
+            return &(inhalt[sz]);
+          }
+        }
+
         void set_parent(ADS_set* prnt) {
           parent = prnt;
         }
@@ -174,6 +193,8 @@ public:
 
           return size;
         }
+
+
     };
 
     size_t d;
@@ -274,8 +295,12 @@ public:
 
     //void swap(ADS_set &other);
 
-    //const_iterator begin() const;
-    //const_iterator end() const;
+    const_iterator begin() const {
+      return {inhalt[0].first(), 0, 0, this};
+    }
+    const_iterator end() const {
+      return {inhalt[max_sz].last(), inhalt[max_sz].find_element(*(inhalt[max_sz].last())), max_sz, this};
+    }
 
     void dump(std::ostream &o = std::cerr) const {
       for (size_t i {0}; i < max_sz; ++i) {
@@ -319,33 +344,31 @@ private:
   const ADS_set* parent;
   size_t counter;
   size_t bucket_counter;
-  size_t count;
+  //size_t count;
 
 public:
 
   explicit ForwardIterator():
-    ptr{nullptr}, counter{0}, bucket_counter{0}, count{0}, parent{nullptr}  {}
+    ptr{nullptr}, counter{0}, bucket_counter{0}, parent{nullptr}  {}
 
   ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
       ptr{val}, counter{counter}, bucket_counter{bucket_counter}, parent{parent}  {}
   reference operator*() const { return *ptr; }
   pointer operator->() const { return *ptr; }
   ForwardIterator &operator++() {
-  }
-  ForwardIterator operator++(int) {
     if (counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
       ++counter;
     } else {
       counter = 0;
       bucket_counter++;
-      while (bucket_counter != parent->max_sz && counter > parent->inhalt[bucket_counter].get_sz() - 1) {
+      while (bucket_counter != parent->max_sz && counter >= parent->inhalt[bucket_counter].get_sz()) {
         counter = 0;
         ++bucket_counter;
       }
     }
-    int temp_counter{counter};
+    size_t temp_counter{counter};
     Bucket* target_b {&(parent->inhalt[bucket_counter])};
-    if (counter >= target_b->sz) {
+    if (counter >= N) {
       do {
         temp_counter -= N;
         target_b = parent->inhalt[bucket_counter].ueberlauf;
@@ -354,8 +377,15 @@ public:
     ptr = target_b->inhalt + temp_counter;
     return *this;
   }
-  friend bool operator==(const ForwardIterator &lhs, const ForwardIterator &rhs);
-  friend bool operator!=(const ForwardIterator &lhs, const ForwardIterator &rhs);
+  ForwardIterator operator++(int) {
+  }
+
+  friend bool operator==(const ForwardIterator &lhs, const ForwardIterator &rhs) {
+    return lhs.bucket_counter == rhs.bucket_counter && lhs.counter == rhs.counter;
+  }
+  friend bool operator!=(const ForwardIterator &lhs, const ForwardIterator &rhs) {
+    return lhs.bucket_counter != rhs.bucket_counter || lhs.counter != rhs.counter;
+  }
 };
 
 template <typename Key, size_t N>
