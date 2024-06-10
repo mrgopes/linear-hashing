@@ -192,7 +192,7 @@ public:
       else return const_iterator{inhalt[0].first(), 0, 0, this};
     }
     const_iterator end() const {
-      return const_iterator{inhalt[max_sz - 1].last(), inhalt[max_sz - 1].find_element(*(inhalt[max_sz - 1].last())), max_sz - 1, this};
+      return const_iterator{inhalt[max_sz - 1].last(), SIZE_MAX, max_sz - 1, this};
     }
 
     void dump(std::ostream &o = std::cerr) const {
