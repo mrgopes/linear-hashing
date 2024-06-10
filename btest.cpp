@@ -220,6 +220,8 @@ void test_insert(ads::set<val_t>& a, std::set<val_t>& r, size_t n, size_t max_va
     for(size_t i = 0; i < n; ++i) {
         val_t v{ dist(gen) };
 
+        a.dump();
+
         std::cerr << "in " << v << '\n';
         auto it_r = r.insert(v);
         auto it_a = a.insert(v);

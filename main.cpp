@@ -31,6 +31,10 @@ int main() {
 
   std::cout << tracker << std::endl;
 
+  ADS_set<size_t, 1> ht3{};
+
+  if (ht3.begin() == ht3.end()) std::cout << "end" << std::endl;
+
   //ht.dump();
 
 //  auto it = ht.begin();
