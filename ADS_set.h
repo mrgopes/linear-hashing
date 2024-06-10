@@ -16,8 +16,8 @@ public:
     using const_reference = const value_type &;
     using size_type = size_t;
     using difference_type = std::ptrdiff_t;
-    using const_iterator = const ForwardIterator/* iterator type */;
-    using iterator = const_iterator;
+    using const_iterator = ForwardIterator/* iterator type */;
+    using iterator = ForwardIterator;
     using key_equal = std::equal_to<key_type>;                       // Hashing
     using hasher = std::hash<key_type>;                              // Hashing
 
@@ -265,8 +265,22 @@ public:
       delete[] inhalt;
     }
 
-    //ADS_set &operator=(const ADS_set &other);
-    //ADS_set &operator=(std::initializer_list<key_type> ilist);
+    ADS_set &operator=(const ADS_set &other) {
+      if (this == &other) return *this;
+      clear();
+      for (const auto& i : other) {
+        insert(i);
+      }
+      return *this;
+    }
+    ADS_set &operator=(std::initializer_list<key_type> ilist) {
+      clear();
+      for (const auto& i : ilist) {
+//        std::cerr << i << std::endl;
+        insert(i);
+      }
+      return *this;
+    }
 
     size_type size() const {
       return sz;
@@ -292,7 +306,19 @@ public:
       }
     }
 
-    //void clear();
+    void clear() {
+      sz = 0;
+      nextToSplit = 0;
+      d = 0;
+      max_sz = binpow(d);
+
+      Bucket* backup = inhalt;
+      inhalt = new Bucket[binpow(d)];
+      for (size_t i {0}; i < binpow(d); ++i) {
+        inhalt[i].set_parent(this);
+      }
+      delete[] backup;
+    }
 
     size_type erase(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
@@ -335,18 +361,32 @@ public:
       }
     }
 
-    //void swap(ADS_set &other);
+    /*
+     *     size_t d;
+    size_t max_sz;
+    Bucket* inhalt;
+    size_t nextToSplit;
+    size_t sz;
+     */
+
+    void swap(ADS_set &other) {
+      std::swap(d, other.d);
+      std::swap(max_sz, other.max_sz);
+      std::swap(nextToSplit, other.nextToSplit);
+      std::swap(inhalt, other.inhalt);
+      std::swap(sz, other.sz);
+    }
 
     const_iterator begin() const {
       if (inhalt[0].get_sz() == 0) {
-        ADS_set<Key, N>::ForwardIterator it {inhalt[0].first(), 0, 0, this};
+        const_iterator it {inhalt[0].first(), 0, 0, this};
         it++;
         return it;
       }
-      else return {inhalt[0].first(), 0, 0, this};
+      else return const_iterator{inhalt[0].first(), 0, 0, this};
     }
     const_iterator end() const {
-      return {inhalt[max_sz - 1].last(), inhalt[max_sz - 1].find_element(*(inhalt[max_sz - 1].last())), max_sz - 1, this};
+      return const_iterator{inhalt[max_sz - 1].last(), inhalt[max_sz - 1].find_element(*(inhalt[max_sz - 1].last())), max_sz - 1, this};
     }
 
     void dump(std::ostream &o = std::cerr) const {
@@ -360,7 +400,7 @@ public:
       for (const auto& i : lhs) {
         if (rhs.find(i).is_leer()) return false;
       }
-      if (lhs.max_sz != rhs.max_sz && lhs.sz != rhs.sz) return false;
+      if (lhs.sz != rhs.sz) return false;
       return true;
     }
     friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs) {
@@ -407,7 +447,7 @@ public:
   ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
       ptr{val}, counter{counter}, bucket_counter{bucket_counter}, parent{parent}  {}
   reference operator*() const { return *ptr; }
-  pointer operator->() const { return *ptr; }
+  pointer operator->() const { return ptr; }
   ForwardIterator &operator++() {
     if (*this != parent->end() && counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
       ++counter;
