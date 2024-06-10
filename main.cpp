@@ -22,7 +22,7 @@ int main() {
   std::uniform_int_distribution< u32 > distribute( 1, 1000000);
 
   int tracker = 0;
-  for (int i {0}; i < 20; ++i) {
+  for (int i {0}; i < 2000; ++i) {
     size_t item {distribute( generator )};
     ht.insert(item);
     ht2.insert(item);
@@ -57,6 +57,10 @@ int main() {
   if (ht2 != ht) std::cout << tracker << std::endl;
 
   ht.erase(500);
+
+  ht.clear();
+
+  ht.dump();
 
   //int **i {new int*[2147483648]};
 
