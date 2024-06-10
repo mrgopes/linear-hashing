@@ -293,6 +293,7 @@ public:
     }
 
     //void clear();
+
     size_type erase(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
       if (wert < nextToSplit) {
@@ -319,12 +320,19 @@ public:
     }
 
     iterator find(const key_type &key) const {
-      size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit)
+      size_t wert{get_hash_wert(key, d)};
+      if (wert < nextToSplit) {
+        if (inhalt[get_hash_wert(key, d + 1)].find_element(key) == SIZE_MAX)
+          return {};
         return {
-        inhalt[get_hash_wert(key, d + 1)].find(key),
-        inhalt[get_hash_wert(key, d + 1)].find_element(key), get_hash_wert(key, d + 1), this};
-      else return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this};
+          inhalt[get_hash_wert(key, d + 1)].find(key),
+          inhalt[get_hash_wert(key, d + 1)].find_element(key), get_hash_wert(key, d + 1), this};
+      } else {
+        if (inhalt[wert].find_element(key) == SIZE_MAX)
+          return {};
+        return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this
+        };
+      }
     }
 
     //void swap(ADS_set &other);
@@ -348,10 +356,16 @@ public:
       o << "Size: " << size() << std::endl;
     }
 
-    /*
-    friend bool operator==(const ADS_set &lhs, const ADS_set &rhs);
-    friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs);
-     */
+    friend bool operator==(const ADS_set &lhs, const ADS_set &rhs) {
+      for (const auto& i : lhs) {
+        if (rhs.find(i).is_leer()) return false;
+      }
+      if (lhs.max_sz != rhs.max_sz && lhs.sz != rhs.sz) return false;
+      return true;
+    }
+    friend bool operator!=(const ADS_set &lhs, const ADS_set &rhs) {
+      return !(lhs == rhs);
+    }
 
     /*
      * EXTRA
@@ -387,7 +401,7 @@ private:
 
 public:
 
-  explicit ForwardIterator():
+  ForwardIterator():
     ptr{nullptr}, counter{0}, bucket_counter{0}, parent{nullptr}  {}
 
   ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
@@ -421,6 +435,10 @@ public:
     ForwardIterator old {ptr, counter, bucket_counter, parent};
     this->operator++();
     return old;
+  }
+
+  bool is_leer() const {
+    return !(ptr);
   }
 
   friend bool operator==(const ForwardIterator &lhs, const ForwardIterator &rhs) {
