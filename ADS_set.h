@@ -16,207 +16,22 @@ public:
     using const_reference = const value_type &;
     using size_type = size_t;
     using difference_type = std::ptrdiff_t;
-    using const_iterator = ForwardIterator/* iterator type */;
+    using const_iterator = ForwardIterator;
     using iterator = ForwardIterator;
     using key_equal = std::equal_to<key_type>;                       // Hashing
     using hasher = std::hash<key_type>;                              // Hashing
 
-    void insert(std::initializer_list<key_type> ilist) {
-      insert(ilist.begin(), ilist.end());
-    }
-
-    class Bucket {
-    private:
-    public:
-        Key inhalt[N];
-        Bucket* ueberlauf;
-        ADS_set* parent;
-
-        size_t sz;
-
-        void erase(size_t pos) {
-          Bucket* temp {ueberlauf};
-          if (pos >= sz && pos < N) return;
-          if (pos >= N) {
-            for (size_t i {1}; i < pos / N; ++i) {
-              temp = temp->ueberlauf;
-            }
-            pos = pos % N;
-            for (size_t i {pos}; i < temp->sz - 1; ++i) {
-              temp->inhalt[i] = temp->inhalt[i + 1];
-            }
-            --(temp->sz);
-          } else {
-            for (size_t i {pos}; i < sz - 1; ++i) {
-              inhalt[i] = inhalt[i + 1];
-            }
-            --sz;
-          }
-        }
-
-        explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
-
-        // todo: sehr sus, please fix
-        Bucket& operator=(const Bucket& b) {
-          if (this == &b) return *this;
-          for (size_t i {0}; i < b.sz; ++i) {
-            inhalt[i] = b.inhalt[i];
-          }
-          if (b.ueberlauf && !ueberlauf) ueberlauf = new Bucket{};
-          *ueberlauf = *b.ueberlauf;
-          sz = b.sz;
-          parent = b.parent;
-          return *this;
-        }
-
-        bool operator==(const Bucket& b) {
-          return ueberlauf == b.ueberlauf && parent == b.parent && inhalt == b.inhalt && sz == b.sz;
-        }
-
-        ~Bucket() {
-          delete ueberlauf;
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
-          os << "{ Bucket: ";
-          for (size_t i {0}; i < rop.sz; ++i) {
-            os << "[" << i << "] " << rop.inhalt[i] << ", ";
-          }
-          if (rop.ueberlauf != nullptr) {
-            os << "Ueberlauf: " << *(rop.ueberlauf);
-          }
-          return os << "}";
-        }
-
-        key_type* find(key_type key) {
-          for (size_t i {0}; i < sz; i++) {
-            if (key_equal{}(inhalt[i], key)) return &(inhalt[i]);
-          }
-          Bucket* ueb {ueberlauf};
-          while (ueb != nullptr) {
-            for (size_t j {0}; j < ueb->sz; j++) {
-              if (key_equal{}(ueb->inhalt[j], key)) return &ueb->inhalt[j];
-            }
-            ueb = ueb->ueberlauf;
-          }
-          return nullptr;
-        }
-
-        key_type* first() {
-          return &(inhalt[0]);
-        }
-
-        key_type* last() {
-          if (ueberlauf) {
-            Bucket* temp {ueberlauf};
-            while (temp) {
-              if (temp->ueberlauf) {
-                temp = temp->ueberlauf;
-              } else {
-                return &(inhalt[temp->sz]);
-              }
-            }
-            return &(inhalt[temp->sz]);
-          } else {
-            return &(inhalt[sz]);
-          }
-        }
-
-        void set_parent(ADS_set* prnt) {
-          parent = prnt;
-        }
-
-        Bucket(std::initializer_list<key_type> ilist): Bucket() {
-          insert(ilist);
-        }
-
-        key_type* insert(Key item, bool allow_split = true) {
-          for (size_t i {0}; i < sz; i++) {
-            if (key_equal{}(inhalt[i], item)) return nullptr;
-          }
-          if (!full()) {
-            inhalt[sz++] = item;
-            return &(inhalt[sz]);
-          } else {
-            if (!ueberlauf) ueberlauf = new Bucket(nullptr);
-            key_type* result = ueberlauf->insert(item, false);
-            if (result != nullptr && allow_split) parent->global_split();
-            return result;
-          }
-        }
-
-        bool full() {
-          return sz == N;
-        }
-
-        void split() {
-          if (!parent) return;
-          for (size_t i {sz}; i > 0; --i) {
-            if (get_hash_wert(inhalt[i - 1], parent->d + 1) != get_hash_wert(inhalt[i - 1], parent->d)) {
-              parent->inhalt[get_hash_wert(inhalt[i - 1], parent->d+1)].insert(inhalt[i - 1], false);
-              erase(i - 1);
-            }
-          }
-          Bucket* ueb {ueberlauf};
-          Bucket* first_ueb{ueberlauf};
-          ueberlauf = nullptr;
-          while (ueb != nullptr) {
-            for (size_t i {ueb->sz}; i > 0; --i) {
-              if (get_hash_wert(ueb->inhalt[i - 1], parent->d + 1) != get_hash_wert(ueb->inhalt[i - 1], parent->d)) {
-                parent->inhalt[get_hash_wert(ueb->inhalt[i - 1], parent->d+1)].insert(ueb->inhalt[i - 1], false);
-                ueb->erase(i - 1);
-              } else {
-                this->insert(ueb->inhalt[i - 1], false);
-              }
-            }
-            // ... vllt irgendwann mal den alten ueb deleten?
-            ueb = ueb->ueberlauf;
-          }
-          delete first_ueb;
-          parent->nextToSplit++;
-          if (parent->nextToSplit == binpow(parent->d)) {
-            parent->split_weiter();
-          }
-        }
-
-        size_t find_element(key_type b) {
-          for (size_t i{0}; i < sz; ++i) {
-            if (key_equal{}(inhalt[i], b)) return i;
-          }
-          if (ueberlauf) {
-            size_t counter {N};
-            Bucket* ueb {ueberlauf};
-            while (ueb != nullptr) {
-              for (size_t i{0}; i < sz; ++i) {
-                if (key_equal{}(ueb->inhalt[i], b)) return counter + i;
-              }
-              ueb = ueb->ueberlauf;
-              counter += N;
-            }
-          }
-          return SIZE_MAX;
-        }
-
-        size_t get_sz() {
-          size_t size{0};
-          Bucket* current{this};
-          while (current->ueberlauf) {
-            size += N;
-            current = current->ueberlauf;
-          }
-          size += current->sz;
-
-          return size;
-        }
-
-
-    };
+    class Bucket;
 
     size_t d;
     size_t max_sz;
     Bucket* inhalt;
     size_t nextToSplit;
     size_t sz;
+
+    void insert(std::initializer_list<key_type> ilist) {
+      insert(ilist.begin(), ilist.end());
+    }
 
     ADS_set(): d{0}, max_sz{2}, inhalt{new Bucket[2]}, nextToSplit{0}, sz{0} {
       inhalt->set_parent(this);
@@ -256,9 +71,7 @@ public:
     }
 
     ADS_set(const ADS_set &other): ADS_set() {
-      for (const auto& i : other) {
-        insert(i);
-      }
+      insert(other.begin(), other.end());
     }
 
     ~ADS_set() {
@@ -268,17 +81,12 @@ public:
     ADS_set &operator=(const ADS_set &other) {
       if (this == &other) return *this;
       clear();
-      for (const auto& i : other) {
-        insert(i);
-      }
+      insert(other.begin(), other.end());
       return *this;
     }
     ADS_set &operator=(std::initializer_list<key_type> ilist) {
       clear();
-      for (const auto& i : ilist) {
-//        std::cerr << i << std::endl;
-        insert(i);
-      }
+      insert(ilist.begin(), ilist.end());
       return *this;
     }
 
@@ -297,19 +105,17 @@ public:
       return {find(key), true};
     }
 
-    template<typename InputIt> void insert(InputIt first, InputIt last) {
+    template<typename InputIt>
+    void insert(InputIt first, InputIt last) {
       for (auto it {first}; it != last; ++it) {
-//        dump();
-        size_t wert {get_hash_wert(*it, d)};
-        if (wert < nextToSplit) sz += inhalt[get_hash_wert(*it, d + 1)].insert(*it) != nullptr;
-        else sz += inhalt[wert].insert(*it) != nullptr;
+        insert(*it);
       }
     }
 
     void clear() {
       sz = 0;
       nextToSplit = 0;
-      d = 0;
+      d = 1;
       max_sz = binpow(d);
 
       Bucket* backup = inhalt;
@@ -349,13 +155,13 @@ public:
       size_t wert{get_hash_wert(key, d)};
       if (wert < nextToSplit) {
         if (inhalt[get_hash_wert(key, d + 1)].find_element(key) == SIZE_MAX)
-          return {};
+          return end();
         return {
           inhalt[get_hash_wert(key, d + 1)].find(key),
           inhalt[get_hash_wert(key, d + 1)].find_element(key), get_hash_wert(key, d + 1), this};
       } else {
         if (inhalt[wert].find_element(key) == SIZE_MAX)
-          return {};
+          return end();
         return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this
         };
       }
@@ -494,5 +300,193 @@ void swap(ADS_set<Key,N> &lhs, ADS_set<Key,N> &rhs) { lhs.swap(rhs); }
 
 //template <typename Key, size_t N>
 //size_t ADS_set<Key, N>::d = 1;
+
+template <typename Key, size_t N>
+class ADS_set<Key, N>::Bucket  {
+private:
+public:
+    Key inhalt[N];
+    Bucket* ueberlauf;
+    ADS_set* parent;
+
+    size_t sz;
+
+    void erase(size_t pos) {
+      Bucket* temp {ueberlauf};
+      if (pos >= sz && pos < N) return;
+      if (pos >= N) {
+        for (size_t i {1}; i < pos / N; ++i) {
+          temp = temp->ueberlauf;
+        }
+        pos = pos % N;
+        for (size_t i {pos}; i < temp->sz - 1; ++i) {
+          temp->inhalt[i] = temp->inhalt[i + 1];
+        }
+        --(temp->sz);
+      } else {
+        for (size_t i {pos}; i < sz - 1; ++i) {
+          inhalt[i] = inhalt[i + 1];
+        }
+        --sz;
+      }
+    }
+
+    explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
+
+    // todo: sehr sus, please fix
+    Bucket& operator=(const Bucket& b) {
+      if (this == &b) return *this;
+      for (size_t i {0}; i < b.sz; ++i) {
+        inhalt[i] = b.inhalt[i];
+      }
+      if (b.ueberlauf && !ueberlauf) ueberlauf = new Bucket{};
+      *ueberlauf = *b.ueberlauf;
+      sz = b.sz;
+      parent = b.parent;
+      return *this;
+    }
+
+    bool operator==(const Bucket& b) {
+      return ueberlauf == b.ueberlauf && parent == b.parent && inhalt == b.inhalt && sz == b.sz;
+    }
+
+    ~Bucket() {
+      delete ueberlauf;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
+      os << "{ Bucket: ";
+      for (size_t i {0}; i < rop.sz; ++i) {
+        os << "[" << i << "] " << rop.inhalt[i] << ", ";
+      }
+      if (rop.ueberlauf != nullptr) {
+        os << "Ueberlauf: " << *(rop.ueberlauf);
+      }
+      return os << "}";
+    }
+
+    key_type* find(key_type key) {
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], key)) return &(inhalt[i]);
+      }
+      Bucket* ueb {ueberlauf};
+      while (ueb != nullptr) {
+        for (size_t j {0}; j < ueb->sz; j++) {
+          if (key_equal{}(ueb->inhalt[j], key)) return &ueb->inhalt[j];
+        }
+        ueb = ueb->ueberlauf;
+      }
+      return nullptr;
+    }
+
+    key_type* first() {
+      return &(inhalt[0]);
+    }
+
+    key_type* last() {
+      if (ueberlauf) {
+        Bucket* temp {ueberlauf};
+        while (temp) {
+          if (temp->ueberlauf) {
+            temp = temp->ueberlauf;
+          } else {
+            return &(inhalt[temp->sz]);
+          }
+        }
+        return &(inhalt[temp->sz]);
+      } else {
+        return &(inhalt[sz]);
+      }
+    }
+
+    void set_parent(ADS_set* prnt) {
+      parent = prnt;
+    }
+
+    Bucket(std::initializer_list<key_type> ilist): Bucket() {
+      insert(ilist);
+    }
+
+    key_type* insert(Key item, bool allow_split = true) {
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], item)) return nullptr;
+      }
+      if (!full()) {
+        inhalt[sz++] = item;
+        return &(inhalt[sz]);
+      } else {
+        if (!ueberlauf) ueberlauf = new Bucket(nullptr);
+        key_type* result = ueberlauf->insert(item, false);
+        if (result != nullptr && allow_split) parent->global_split();
+        return result;
+      }
+    }
+
+    bool full() {
+      return sz == N;
+    }
+
+    void split() {
+      if (!parent) return;
+      for (size_t i {sz}; i > 0; --i) {
+        if (get_hash_wert(inhalt[i - 1], parent->d + 1) != get_hash_wert(inhalt[i - 1], parent->d)) {
+          parent->inhalt[get_hash_wert(inhalt[i - 1], parent->d+1)].insert(inhalt[i - 1], false);
+          erase(i - 1);
+        }
+      }
+      Bucket* ueb {ueberlauf};
+      Bucket* first_ueb{ueberlauf};
+      ueberlauf = nullptr;
+      while (ueb != nullptr) {
+        for (size_t i {ueb->sz}; i > 0; --i) {
+          if (get_hash_wert(ueb->inhalt[i - 1], parent->d + 1) != get_hash_wert(ueb->inhalt[i - 1], parent->d)) {
+            parent->inhalt[get_hash_wert(ueb->inhalt[i - 1], parent->d+1)].insert(ueb->inhalt[i - 1], false);
+            ueb->erase(i - 1);
+          } else {
+            this->insert(ueb->inhalt[i - 1], false);
+          }
+        }
+        // ... vllt irgendwann mal den alten ueb deleten?
+        ueb = ueb->ueberlauf;
+      }
+      delete first_ueb;
+      parent->nextToSplit++;
+      if (parent->nextToSplit == binpow(parent->d)) {
+        parent->split_weiter();
+      }
+    }
+
+    size_t find_element(key_type b) {
+      for (size_t i{0}; i < sz; ++i) {
+        if (key_equal{}(inhalt[i], b)) return i;
+      }
+      if (ueberlauf) {
+        size_t counter {N};
+        Bucket* ueb {ueberlauf};
+        while (ueb != nullptr) {
+          for (size_t i{0}; i < sz; ++i) {
+            if (key_equal{}(ueb->inhalt[i], b)) return counter + i;
+          }
+          ueb = ueb->ueberlauf;
+          counter += N;
+        }
+      }
+      return SIZE_MAX;
+    }
+
+    size_t get_sz() {
+      size_t size{0};
+      Bucket* current{this};
+      while (current->ueberlauf) {
+        size += N;
+        current = current->ueberlauf;
+      }
+      size += current->sz;
+
+      return size;
+    }
+
+
+};
 
 #endif // ADS_SET_H
