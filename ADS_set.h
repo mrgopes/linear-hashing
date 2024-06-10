@@ -38,7 +38,7 @@ public:
           Bucket* temp {ueberlauf};
           if (pos >= sz && pos < N) return;
           if (pos >= N) {
-            for (int i {1}; i < pos / N; ++i) {
+            for (size_t i {1}; i < pos / N; ++i) {
               temp = temp->ueberlauf;
             }
             pos = pos % N;
