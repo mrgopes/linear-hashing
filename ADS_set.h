@@ -52,7 +52,7 @@ public:
       for (size_t i {0}; i < binpow(d); ++i) {
         inhalt[i] = backup[i];
       }
-      for (size_t i {binpow(d)}; i < binpow(d + 1); ++i) {
+      for (size_t i {binpow(0)}; i < binpow(d + 1); ++i) {
         inhalt[i].set_parent(this);
       }
       delete[] backup;
@@ -320,17 +320,18 @@ public:
     Bucket* ueberlauf;
     ADS_set* parent;
 
-    size_t sz;
+    unsigned sz;
 
-    void erase(size_t pos) {
+    void erase(unsigned pos) {
       if (pos >= sz && pos < N) return;
       if (pos < N) {
-        for (size_t i {pos}; i < sz - 1; ++i) {
-          inhalt[i] = inhalt[i + 1];
+        for (unsigned i {pos}; i < sz - 1; ++i) {
+          if (i + 1 < N) inhalt[i] = inhalt[i + 1];
         }
 
         if (ueberlauf) {
-          inhalt[sz - 1] = ueberlauf->inhalt[0];
+          if (sz - 1 < N)
+            inhalt[sz - 1] = ueberlauf->inhalt[0];
           if (ueberlauf->sz == 1) {
             delete ueberlauf;
             ueberlauf = nullptr;
@@ -447,6 +448,9 @@ public:
 
     void split() {
       if (!parent) return;
+      Bucket* ueb {ueberlauf};
+      Bucket* first_ueb{ueberlauf};
+      ueberlauf = nullptr;
       for (size_t i {0}; i < sz;) {
         if (get_hash_wert(inhalt[i], parent->d + 1) != get_hash_wert(inhalt[i], parent->d)) {
           parent->inhalt[get_hash_wert(inhalt[i], parent->d+1)].insert(inhalt[i], false);
@@ -455,9 +459,6 @@ public:
           ++i;
         }
       }
-      Bucket* ueb {ueberlauf};
-      Bucket* first_ueb{ueberlauf};
-      ueberlauf = nullptr;
       while (ueb != nullptr) {
         for (size_t i {0}; i < ueb->sz; i++) {
           if (get_hash_wert(ueb->inhalt[i], parent->d + 1) != get_hash_wert(ueb->inhalt[i], parent->d)) {

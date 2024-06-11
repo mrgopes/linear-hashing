@@ -277,8 +277,9 @@
  void test_erase(const Key &k, ads_set *c, reference_set *r = nullptr, bool verbose = false) {
    size_t r_rc {r ? r->erase(k) : 1}; 
    size_t c_rc {c->erase(k)};
-   if (r_rc != c_rc) 
+   if (r_rc != c_rc) {
      std::cout << "\n ERROR for " << k << ", returns " << c_rc << ", should be " << r_rc << '\n';
+    }
    else if (verbose) 
      std::cout << ' ' << c_rc;
  }
