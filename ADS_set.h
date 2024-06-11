@@ -52,7 +52,7 @@ public:
       for (size_t i {0}; i < binpow(d); ++i) {
         inhalt[i] = backup[i];
       }
-      for (size_t i {binpow(0)}; i < binpow(d + 1); ++i) {
+      for (size_t i {0}; i < binpow(d + 1); ++i) {
         inhalt[i].set_parent(this);
       }
       delete[] backup;
@@ -101,10 +101,10 @@ public:
       size_t wert {get_hash_wert(key, d)};
       bool result;
       if (wert < nextToSplit) {
-        result = inhalt[get_hash_wert(key, d + 1)].insert(key) != nullptr;
+        result = inhalt[get_hash_wert(key, d + 1)].insert(key);
       }
       else {
-        result = inhalt[wert].insert(key) != nullptr;
+        result = inhalt[wert].insert(key);
       }
       sz += result;
 
@@ -135,36 +135,37 @@ public:
     size_type erase(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
       if (wert < nextToSplit) {
-        if (inhalt[get_hash_wert(key, d + 1)].find_element(key) != SIZE_MAX) {
+        if (inhalt[get_hash_wert(key, d + 1)].find_original(key) == true) {
           --sz;
           inhalt[get_hash_wert(key, d + 1)].erase(inhalt[get_hash_wert(key, d + 1)].find_element(key));
           return 1;
-        } else return 0;
+        }
       } else {
-        if (inhalt[wert].find_element(key) != SIZE_MAX) {
+        if (inhalt[wert].find_original(key) == true) {
           --sz;
           inhalt[wert].erase(inhalt[wert].find_element(key));
           return 1;
-        } else {
-          return 0;
         }
       }
+      return 0;
     }
 
     size_type count(const key_type &key) const {
-      return find(key) != end();
+      size_t wert {get_hash_wert(key, d)};
+      if (wert < nextToSplit) return inhalt[get_hash_wert(key, d + 1)].find_original((key));
+      else return inhalt[wert].find_original((key));
     }
 
     iterator find(const key_type &key) const {
       size_t wert{get_hash_wert(key, d)};
       if (wert < nextToSplit) {
-        if (inhalt[get_hash_wert(key, d + 1)].find_element(key) == SIZE_MAX)
+        if (inhalt[get_hash_wert(key, d + 1)].find_original(key) == false)
           return end();
         return {
           inhalt[get_hash_wert(key, d + 1)].find(key),
           inhalt[get_hash_wert(key, d + 1)].find_element(key), get_hash_wert(key, d + 1), this};
       } else {
-        if (inhalt[wert].find_element(key) == SIZE_MAX)
+        if (inhalt[wert].find_original(key) == false)
           return end();
         return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this
         };
@@ -320,19 +321,18 @@ public:
     Bucket* ueberlauf;
     ADS_set* parent;
 
-    unsigned sz;
+    size_t sz;
 
-    void erase(unsigned pos) {
+    void erase(size_t pos) {
       if (pos >= sz && pos < N) return;
-      if (pos < N) {
-        for (unsigned i {pos}; i < sz - 1; ++i) {
+      if (pos < N && N > 1) {
+        for (size_t i {pos}; i < sz - 1; ++i) {
           if (i + 1 < N) inhalt[i] = inhalt[i + 1];
         }
 
         if (ueberlauf) {
-          if (sz - 1 < N)
-            inhalt[sz - 1] = ueberlauf->inhalt[0];
-          if (ueberlauf->sz == 1) {
+          if (sz - 1 < N) inhalt[sz - 1] = ueberlauf->inhalt[0];
+          if (ueberlauf->sz == 1 && ueberlauf->ueberlauf == nullptr) {
             delete ueberlauf;
             ueberlauf = nullptr;
           } else {
@@ -342,7 +342,22 @@ public:
           --sz;
         }
       }
-      if (pos >= N && ueberlauf && pos == N && ueberlauf->sz == 1) {
+      else if (pos < N && N == 1) {
+        if (ueberlauf) {
+          inhalt[0] = ueberlauf->inhalt[0];
+          if (ueberlauf->ueberlauf) {
+            Bucket* temp {ueberlauf};
+            ueberlauf = temp->ueberlauf;
+            temp->ueberlauf = nullptr;
+          } else {
+            delete ueberlauf;
+            ueberlauf = nullptr;
+          }
+        } else {
+          --sz;
+        }
+      }
+      else if (ueberlauf && pos == N && ueberlauf->sz == 1 && ueberlauf->ueberlauf == nullptr) {
         delete ueberlauf;
         ueberlauf = nullptr;
       }
@@ -419,6 +434,20 @@ public:
       }
     }
 
+    bool find_original(key_type key) const {
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], key)) return true;
+      }
+      Bucket* ueb {ueberlauf};
+      while (ueb != nullptr) {
+        for (size_t j {0}; j < ueb->sz; j++) {
+          if (key_equal{}(ueb->inhalt[j], key)) return true;
+        }
+        ueb = ueb->ueberlauf;
+      }
+      return false;
+    }
+
     void set_parent(ADS_set* prnt) {
       parent = prnt;
     }
@@ -427,17 +456,17 @@ public:
       insert(ilist);
     }
 
-    key_type* insert(Key item, bool allow_split = true) {
+    bool insert(Key item, bool allow_split = true) {
       for (size_t i {0}; i < sz; i++) {
-        if (key_equal{}(inhalt[i], item)) return nullptr;
+        if (key_equal{}(inhalt[i], item)) return false;
       }
       if (!full()) {
         inhalt[sz++] = item;
         return &(inhalt[sz]);
       } else {
         if (!ueberlauf) ueberlauf = new Bucket(nullptr);
-        key_type* result = ueberlauf->insert(item, false);
-        if (result != nullptr && allow_split) parent->global_split();
+        bool result = ueberlauf->insert(item, false);
+        if (result && allow_split) parent->global_split();
         return result;
       }
     }
@@ -464,7 +493,7 @@ public:
           if (get_hash_wert(ueb->inhalt[i], parent->d + 1) != get_hash_wert(ueb->inhalt[i], parent->d)) {
             parent->inhalt[get_hash_wert(ueb->inhalt[i], parent->d+1)].insert(ueb->inhalt[i], false);
           } else {
-            this->insert(ueb->inhalt[i], false);
+            insert(ueb->inhalt[i], false);
           }
         }
         // ... vllt irgendwann mal den alten ueb deleten?
@@ -479,6 +508,7 @@ public:
 
     size_t find_element(key_type b) {
       for (size_t i{0}; i < sz; ++i) {
+        //if (key_equal{}(inhalt[i], b)) return i;
         if (key_equal{}(inhalt[i], b)) return i;
       }
       if (ueberlauf) {
