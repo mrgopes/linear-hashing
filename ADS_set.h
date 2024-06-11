@@ -263,6 +263,7 @@ public:
   reference operator*() const { return *ptr; }
   pointer operator->() const { return ptr; }
   ForwardIterator &operator++() {
+//    std::cout << "i" << *ptr << std::endl;
     if (bucket_counter >= parent->max_sz) return *this;
     if (counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
       ++counter;
@@ -278,7 +279,7 @@ public:
       if (counter >= N) {
         do {
           temp_counter -= N;
-          target_b = parent->inhalt[bucket_counter].ueberlauf;
+          target_b = target_b->ueberlauf;
         } while (temp_counter >= target_b->sz);
       }
       ptr = target_b->inhalt + temp_counter;
@@ -349,6 +350,7 @@ public:
             Bucket* temp {ueberlauf};
             ueberlauf = temp->ueberlauf;
             temp->ueberlauf = nullptr;
+            delete temp;
           } else {
             delete ueberlauf;
             ueberlauf = nullptr;
