@@ -24,16 +24,14 @@ int main() {
   int tracker = 0;
   for (int i {0}; i < 2000; ++i) {
     size_t item {distribute( generator )};
-    ht.insert(item);
-    ht2.insert(item);
+    ht.insert(i);
+    ht2.insert(i);
     tracker++;
   }
 
   std::cout << tracker << std::endl;
 
   ADS_set<size_t, 1> ht3{};
-
-  if (ht3.begin() == ht3.end()) std::cout << "end" << std::endl;
 
   //ht.dump();
 
@@ -53,18 +51,31 @@ int main() {
   ht.insert(500);
 
   tracker = 0;
+  std::cout << "Iterating over:" << std::endl;
   for (const auto& i : ht) {
-    //std::cout << i << std::endl;
+//    std::cout << i << std::endl;
     tracker++;
   }
 
   if (ht2 != ht) std::cout << tracker << std::endl;
 
-  ht.erase(500);
+  for (int i {0}; i < 2000; ++i) {
+    ht.erase(i);
+  }
 
-  ht.clear();
+  ht2.swap(ht);
 
-  ht.dump();
+  ht2.clear();
+
+  std::cout << "Size:" << std::endl;
+  std::cout << std::distance(ht.begin(), ht.end()) << std::endl;
+  std::cout << ht.size() << std::endl;
+
+  if (ht.begin() == ht.end()) std::cout << "end" << std::endl;
+
+  //ht.clear();
+
+  //ht.dump();
 
   //int **i {new int*[2147483648]};
 

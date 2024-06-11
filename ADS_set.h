@@ -99,10 +99,16 @@ public:
 
     std::pair<iterator,bool> insert(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit) sz += (inhalt[get_hash_wert(key, d + 1)].insert(key) != nullptr);
-      else sz += (inhalt[wert].insert(key) != nullptr);
+      bool result;
+      if (wert < nextToSplit) {
+        result = inhalt[get_hash_wert(key, d + 1)].insert(key) != nullptr;
+      }
+      else {
+        result = inhalt[wert].insert(key) != nullptr;
+      }
+      sz += result;
 
-      return {find(key), true};
+      return {find(key), result};
     }
 
     template<typename InputIt>
@@ -116,11 +122,11 @@ public:
       sz = 0;
       nextToSplit = 0;
       d = 1;
-      max_sz = binpow(d);
+      max_sz = binpow(d+1);
 
       Bucket* backup = inhalt;
-      inhalt = new Bucket[binpow(d)];
-      for (size_t i {0}; i < binpow(d); ++i) {
+      inhalt = new Bucket[binpow(d+1)];
+      for (size_t i {0}; i < binpow(d+1); ++i) {
         inhalt[i].set_parent(this);
       }
       delete[] backup;
@@ -146,9 +152,7 @@ public:
     }
 
     size_type count(const key_type &key) const {
-      size_t wert {get_hash_wert(key, d)};
-      if (wert < nextToSplit) return inhalt[get_hash_wert(key, d + 1)].find((key)) != nullptr;
-      else return inhalt[wert].find((key)) != nullptr;
+      return find(key) != end();
     }
 
     iterator find(const key_type &key) const {
@@ -181,6 +185,11 @@ public:
       std::swap(nextToSplit, other.nextToSplit);
       std::swap(inhalt, other.inhalt);
       std::swap(sz, other.sz);
+
+      for (int i {0}; i < (max_sz > other.max_sz ? max_sz : other.max_sz); ++i) {
+        if (i < max_sz) inhalt[i].set_parent(this);
+        if (i < other.max_sz) other.inhalt[i].set_parent(&other);
+      }
     }
 
     const_iterator begin() const {
@@ -192,7 +201,7 @@ public:
       else return const_iterator{inhalt[0].first(), 0, 0, this};
     }
     const_iterator end() const {
-      return const_iterator{inhalt[max_sz - 1].last(), SIZE_MAX, max_sz - 1, this};
+      return const_iterator{nullptr, SIZE_MAX, max_sz, this};
     }
 
     void dump(std::ostream &o = std::cerr) const {
@@ -229,7 +238,6 @@ public:
     }
 };
 
-
 template <typename Key, size_t N>
 class ADS_set<Key,N>::ForwardIterator {
 public:
@@ -255,28 +263,34 @@ public:
   reference operator*() const { return *ptr; }
   pointer operator->() const { return ptr; }
   ForwardIterator &operator++() {
-    if (*this != parent->end() && counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
+    if (bucket_counter >= parent->max_sz) return *this;
+    if (counter + 1 < parent->inhalt[bucket_counter].get_sz()) {
       ++counter;
-    } else if (*this != parent->end() && bucket_counter != parent->max_sz - 1) {
+    } else if (counter + 1 >= parent->inhalt[bucket_counter].get_sz()) {
       do {
         counter = 0;
         ++bucket_counter;
-      } while (bucket_counter + 1 < parent->max_sz && counter >= parent->inhalt[bucket_counter].get_sz());
+      } while (bucket_counter < parent->max_sz && counter >= parent->inhalt[bucket_counter].get_sz());
     }
-    if (bucket_counter == parent->max_sz - 1 && counter + 1 >= parent->inhalt[bucket_counter].get_sz()) {
-      counter = SIZE_MAX;
+    if (bucket_counter < parent->max_sz) {
+      size_t temp_counter{counter};
+      Bucket *target_b{&(parent->inhalt[bucket_counter])};
+      if (counter >= N) {
+        do {
+          temp_counter -= N;
+          target_b = parent->inhalt[bucket_counter].ueberlauf;
+        } while (temp_counter >= target_b->sz);
+      }
+      ptr = target_b->inhalt + temp_counter;
     }
-    size_t temp_counter{counter};
-    Bucket* target_b {&(parent->inhalt[bucket_counter])};
-    if (counter >= N && counter != SIZE_MAX) {
-      do {
-        temp_counter -= N;
-        target_b = parent->inhalt[bucket_counter].ueberlauf;
-      } while (temp_counter >= target_b->sz);
+    if (bucket_counter == parent->max_sz) {
+      ptr = nullptr;
+    } else {
+//      std::cerr << "iter" << *ptr << std::endl;
     }
-    if (counter != SIZE_MAX) ptr = target_b->inhalt + temp_counter;
     return *this;
   }
+
   ForwardIterator operator++(int) {
     ForwardIterator old {ptr, counter, bucket_counter, parent};
     this->operator++();
@@ -288,10 +302,10 @@ public:
   }
 
   friend bool operator==(const ForwardIterator &lhs, const ForwardIterator &rhs) {
-    return lhs.bucket_counter == rhs.bucket_counter && lhs.counter == rhs.counter;
+    return lhs.bucket_counter == rhs.bucket_counter && lhs.ptr == rhs.ptr;
   }
   friend bool operator!=(const ForwardIterator &lhs, const ForwardIterator &rhs) {
-    return lhs.bucket_counter != rhs.bucket_counter || lhs.counter != rhs.counter;
+    return !(lhs == rhs);
   }
 };
 
@@ -312,22 +326,27 @@ public:
     size_t sz;
 
     void erase(size_t pos) {
-      Bucket* temp {ueberlauf};
       if (pos >= sz && pos < N) return;
-      if (pos >= N) {
-        for (size_t i {1}; i < pos / N; ++i) {
-          temp = temp->ueberlauf;
-        }
-        pos = pos % N;
-        for (size_t i {pos}; i < temp->sz - 1; ++i) {
-          temp->inhalt[i] = temp->inhalt[i + 1];
-        }
-        --(temp->sz);
-      } else {
+      Bucket* first {nullptr};
+      if (pos < N) {
         for (size_t i {pos}; i < sz - 1; ++i) {
           inhalt[i] = inhalt[i + 1];
         }
-        --sz;
+
+        if (ueberlauf) {
+          inhalt[sz - 1] = ueberlauf->inhalt[0];
+          if (ueberlauf->sz == 1) {
+            delete ueberlauf;
+            ueberlauf = nullptr;
+          } else {
+            ueberlauf->erase(0);
+          }
+        } else {
+          --sz;
+        }
+      }
+      if (pos >= N && ueberlauf) {
+        ueberlauf->erase(pos - N);
       }
     }
 
@@ -428,30 +447,31 @@ public:
 
     void split() {
       if (!parent) return;
-      for (size_t i {sz}; i > 0; --i) {
-        if (get_hash_wert(inhalt[i - 1], parent->d + 1) != get_hash_wert(inhalt[i - 1], parent->d)) {
-          parent->inhalt[get_hash_wert(inhalt[i - 1], parent->d+1)].insert(inhalt[i - 1], false);
-          erase(i - 1);
+      for (size_t i {0}; i < sz;) {
+        if (get_hash_wert(inhalt[i], parent->d + 1) != get_hash_wert(inhalt[i], parent->d)) {
+          parent->inhalt[get_hash_wert(inhalt[i], parent->d+1)].insert(inhalt[i], false);
+          erase(i);
+        } else {
+          ++i;
         }
       }
       Bucket* ueb {ueberlauf};
       Bucket* first_ueb{ueberlauf};
       ueberlauf = nullptr;
       while (ueb != nullptr) {
-        for (size_t i {ueb->sz}; i > 0; --i) {
-          if (get_hash_wert(ueb->inhalt[i - 1], parent->d + 1) != get_hash_wert(ueb->inhalt[i - 1], parent->d)) {
-            parent->inhalt[get_hash_wert(ueb->inhalt[i - 1], parent->d+1)].insert(ueb->inhalt[i - 1], false);
-            ueb->erase(i - 1);
+        for (size_t i {0}; i < ueb->sz; i++) {
+          if (get_hash_wert(ueb->inhalt[i], parent->d + 1) != get_hash_wert(ueb->inhalt[i], parent->d)) {
+            parent->inhalt[get_hash_wert(ueb->inhalt[i], parent->d+1)].insert(ueb->inhalt[i], false);
           } else {
-            this->insert(ueb->inhalt[i - 1], false);
+            this->insert(ueb->inhalt[i], false);
           }
         }
         // ... vllt irgendwann mal den alten ueb deleten?
         ueb = ueb->ueberlauf;
       }
       delete first_ueb;
-      parent->nextToSplit++;
-      if (parent->nextToSplit == binpow(parent->d)) {
+      ++(parent->nextToSplit);
+      if (parent->nextToSplit == parent->binpow(parent->d)) {
         parent->split_weiter();
       }
     }
@@ -464,7 +484,7 @@ public:
         size_t counter {N};
         Bucket* ueb {ueberlauf};
         while (ueb != nullptr) {
-          for (size_t i{0}; i < sz; ++i) {
+          for (size_t i{0}; i < ueb->sz; ++i) {
             if (key_equal{}(ueb->inhalt[i], b)) return counter + i;
           }
           ueb = ueb->ueberlauf;
