@@ -51,7 +51,7 @@ build cmake_object_order_depends_target_LinearHashing: phony || CMakeFiles/Linea
 
 build CMakeFiles/LinearHashing.dir/simpletest.cpp.o: CXX_COMPILER__LinearHashing_unscanned_Debug /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/simpletest.cpp || cmake_object_order_depends_target_LinearHashing
   DEP_FILE = CMakeFiles/LinearHashing.dir/simpletest.cpp.o.d
-  FLAGS = -g -fdiagnostics-color=always -Wall -Wextra -Werror -O3 -std=c++17 -pedantic-errors -DPH2 -DETYPE=unsigned -DSIZE=1
+  FLAGS = -g -fdiagnostics-color=always -O3 -std=c++17 -pedantic-errors -DPH2 -DETYPE=unsigned -DSIZE=1
   OBJECT_DIR = CMakeFiles/LinearHashing.dir
   OBJECT_FILE_DIR = CMakeFiles/LinearHashing.dir
 

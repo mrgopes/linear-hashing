@@ -19,10 +19,10 @@ int main() {
   const u32 seed = os_seed();
 
   engine generator( seed );
-  std::uniform_int_distribution< u32 > distribute( 1, 30);
+  std::uniform_int_distribution< u32 > distribute( 1, 1000000);
 
   int tracker = 0;
-  for (int i {0}; i < 2000; ++i) {
+  for (int i {0}; i < 100000; ++i) {
     size_t item {distribute( generator )};
     ht.insert(item);
     ht2.insert(item);
@@ -58,6 +58,11 @@ int main() {
   }
 
   std::cout << tracker << std::endl;
+
+  for (int i {0}; i < 1000000; ++i) {
+    size_t item {distribute( generator )};
+    ht.erase(item);
+  }
 
 //  for (int i {7}; i < 2000; ++i) {
 //    ht.erase(i);
