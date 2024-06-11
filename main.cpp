@@ -10,8 +10,8 @@ int main() {
 
   std::vector<size_t> v1 {17179869183, 8589934591};
 
-  ADS_set<size_t, 1> ht{};
-  ADS_set<size_t, 1> ht2{};
+  ADS_set<size_t, 100> ht{};
+  ADS_set<size_t, 100> ht2{};
 
 //  ht.insert(v1.begin(), v1.end());
 
@@ -19,13 +19,13 @@ int main() {
   const u32 seed = os_seed();
 
   engine generator( seed );
-  std::uniform_int_distribution< u32 > distribute( 1, 1000000);
+  std::uniform_int_distribution< u32 > distribute( 1, 30);
 
   int tracker = 0;
   for (int i {0}; i < 2000; ++i) {
     size_t item {distribute( generator )};
-    ht.insert(i);
-    ht2.insert(i);
+    ht.insert(item);
+    ht2.insert(item);
     tracker++;
   }
 
@@ -57,13 +57,13 @@ int main() {
     tracker++;
   }
 
-  if (ht2 != ht) std::cout << tracker << std::endl;
+  std::cout << tracker << std::endl;
 
-  for (int i {0}; i < 2000; ++i) {
-    ht.erase(i);
-  }
+//  for (int i {7}; i < 2000; ++i) {
+//    ht.erase(i);
+//  }
 
-  ht2.swap(ht);
+//  ht2.swap(ht);
 
   ht2.clear();
 

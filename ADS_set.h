@@ -186,7 +186,7 @@ public:
       std::swap(inhalt, other.inhalt);
       std::swap(sz, other.sz);
 
-      for (int i {0}; i < (max_sz > other.max_sz ? max_sz : other.max_sz); ++i) {
+      for (size_t i {0}; i < (max_sz > other.max_sz ? max_sz : other.max_sz); ++i) {
         if (i < max_sz) inhalt[i].set_parent(this);
         if (i < other.max_sz) other.inhalt[i].set_parent(&other);
       }
@@ -251,15 +251,14 @@ private:
   const ADS_set* parent;
   size_t counter;
   size_t bucket_counter;
-  //size_t count;
 
 public:
 
   ForwardIterator():
-    ptr{nullptr}, counter{0}, bucket_counter{0}, parent{nullptr}  {}
+    ptr{nullptr}, parent{nullptr}, counter{0}, bucket_counter{0}  {}
 
   ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
-      ptr{val}, counter{counter}, bucket_counter{bucket_counter}, parent{parent}  {}
+      ptr{val}, parent{parent}, counter{counter}, bucket_counter{bucket_counter}  {}
   reference operator*() const { return *ptr; }
   pointer operator->() const { return ptr; }
   ForwardIterator &operator++() {
@@ -285,8 +284,6 @@ public:
     }
     if (bucket_counter == parent->max_sz) {
       ptr = nullptr;
-    } else {
-//      std::cerr << "iter" << *ptr << std::endl;
     }
     return *this;
   }
@@ -327,7 +324,6 @@ public:
 
     void erase(size_t pos) {
       if (pos >= sz && pos < N) return;
-      Bucket* first {nullptr};
       if (pos < N) {
         for (size_t i {pos}; i < sz - 1; ++i) {
           inhalt[i] = inhalt[i + 1];
@@ -345,7 +341,11 @@ public:
           --sz;
         }
       }
-      if (pos >= N && ueberlauf) {
+      if (pos >= N && ueberlauf && pos == N && ueberlauf->sz == 1) {
+        delete ueberlauf;
+        ueberlauf = nullptr;
+      }
+      else if (pos >= N && ueberlauf) {
         ueberlauf->erase(pos - N);
       }
     }
@@ -374,7 +374,7 @@ public:
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Bucket &rop) {
-      os << "{ Bucket: ";
+      os << "{ " << rop.sz << " Bucket: ";
       for (size_t i {0}; i < rop.sz; ++i) {
         os << "[" << i << "] " << rop.inhalt[i] << ", ";
       }
