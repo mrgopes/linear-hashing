@@ -201,6 +201,16 @@ public:
       }
       else return const_iterator{inhalt[0].first(), 0, 0, this};
     }
+
+    const_iterator y() const {
+      if (inhalt[0].get_sz() == 0) {
+        const_iterator it {inhalt[0].first(), 0, 0, this, true};
+        it++;
+        return it;
+      }
+      else return const_iterator{inhalt[0].first(), 0, 0, this, true};
+    }
+
     const_iterator end() const {
       return const_iterator{nullptr, SIZE_MAX, max_sz, this};
     }
@@ -253,13 +263,19 @@ private:
   size_t counter;
   size_t bucket_counter;
 
+  bool mode;
+  pointer last_ptr;
+  bool aufsteigend;
+  bool init;
+
 public:
 
   ForwardIterator():
     ptr{nullptr}, parent{nullptr}, counter{0}, bucket_counter{0}  {}
 
-  ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent):
-      ptr{val}, parent{parent}, counter{counter}, bucket_counter{bucket_counter}  {}
+  ForwardIterator(pointer val, size_t counter, size_t bucket_counter, const ADS_set* parent, bool mode = false):
+      ptr{val}, parent{parent}, counter{counter}, bucket_counter{bucket_counter}, mode{mode}, aufsteigend{false},
+      last_ptr{nullptr}, init{false} {}
   reference operator*() const { return *ptr; }
   pointer operator->() const { return ptr; }
   ForwardIterator &operator++() {
@@ -282,7 +298,24 @@ public:
           target_b = target_b->ueberlauf;
         } while (temp_counter >= target_b->sz);
       }
+      last_ptr = ptr;
       ptr = target_b->inhalt + temp_counter;
+      if (!init) {
+        if (*last_ptr < *ptr)
+          aufsteigend = true;
+        else
+          aufsteigend = false;
+        init = true;
+      } else {
+        if (aufsteigend && (*last_ptr > *ptr)) {
+            ptr = last_ptr;
+            return operator++();
+        }
+        else if (!aufsteigend && (*last_ptr < *ptr)) {
+          ptr = last_ptr;
+          return operator++();
+        }
+      }
     }
     if (bucket_counter == parent->max_sz) {
       ptr = nullptr;

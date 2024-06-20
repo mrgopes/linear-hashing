@@ -99,5 +99,15 @@ int main() {
 
   //std::cout << ht.inhalt[4].find_element(500) << std::endl;
 
+  ADS_set<size_t, 100> big{1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+  ADS_set<size_t, 1> small{10, 2, 1000, 50};
+
+  std::cout << "Iterating over:" << std::endl;
+  for (const auto& i : small) {
+    std::cout << i << " ";
+//    tracker++;
+  }
+  std::cout << std::endl;
+
   return 0;
 }
