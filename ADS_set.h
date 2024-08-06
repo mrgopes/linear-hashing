@@ -26,8 +26,8 @@ private:
 
     size_t d;
     size_t max_sz;
-    Bucket* inhalt;
-    Bucket* overflows;
+    Bucket** inhalt;
+    Bucket** overflows;
     size_t nextToSplit;
     size_t sz;
 public:
@@ -35,12 +35,14 @@ public:
       insert(ilist.begin(), ilist.end());
     }
 
-    ADS_set(): d{1}, max_sz{2}, inhalt{new Bucket[2]}, overflows{nullptr}, nextToSplit{0}, sz{0} {
+    ADS_set(): d{1}, max_sz{2}, inhalt{new Bucket*[2]}, overflows{nullptr}, nextToSplit{0}, sz{0} {
+      inhalt[0] = new Bucket();
+      inhalt[1] = new Bucket();
     }
 private:
     void global_split() {
       overflows_erweitern();
-      Bucket::split(inhalt[nextToSplit++], this);
+      Bucket::split(*(inhalt[nextToSplit++]), this);
       if (nextToSplit == binpow(d)) {
         nextToSplit = 0;
         d++;
@@ -52,11 +54,12 @@ private:
     void overflows_erweitern() {
       ++max_sz;
 
-      Bucket* backup = overflows;
-      overflows = new Bucket[max_sz - binpow(d)];
+      Bucket** backup = overflows;
+      overflows = new Bucket*[max_sz - binpow(d)];
       for (size_t i {0}; i < max_sz - binpow(d) - 1; ++i) {
         overflows[i] = backup[i];
       }
+      overflows[max_sz - binpow(d) - 1] = new Bucket();
 
       delete[] backup;
     }
@@ -64,8 +67,8 @@ private:
     void overflow_zusammenfuegen() {
       max_sz = binpow(d);
 
-      Bucket* backup = inhalt;
-      inhalt = new Bucket[max_sz];
+      Bucket** backup = inhalt;
+      inhalt = new Bucket*[max_sz];
       for (size_t i {0}; i < binpow(d - 1); ++i) {
         inhalt[i] = backup[i];
       }
@@ -95,8 +98,14 @@ public:
     }
 
     ~ADS_set() {
+      for (size_t i {0}; i < binpow(d); ++i) {
+        delete inhalt[i];
+      }
+      for (size_t i {0}; i < max_sz - binpow(d); ++i) {
+        delete overflows[i];
+      }
       delete[] inhalt;
-      delete[] overflow;
+      delete[] overflows;
     }
 
     ADS_set &operator=(const ADS_set &other) {
@@ -122,10 +131,10 @@ public:
       size_t wert {get_hash_wert(key, d)};
       bool result;
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        result = Bucket::insert(key, overflows[wert], this);
+        result = Bucket::insert(key, *(overflows[wert]), this);
       }
       else {
-        result = Bucket::insert(key, inhalt[wert], this);
+        result = Bucket::insert(key, *(inhalt[wert]), this);
       }
       sz += result;
 
@@ -140,30 +149,38 @@ public:
     }
 
     void clear() {
+      for (size_t i {0}; i < binpow(d); ++i) {
+        delete inhalt[i];
+      }
+      for (size_t i {0}; i < max_sz - binpow(d); ++i) {
+        delete overflows[i];
+      }
+      delete[] inhalt;
+      delete[] overflows;
+
       sz = 0;
       nextToSplit = 0;
       d = 1;
       max_sz = binpow(d);
 
-      Bucket* backup = inhalt;
-      inhalt = new Bucket[binpow(d)];
-      delete[] overflows;
+      inhalt = new Bucket*[2];
+      inhalt[0] = new Bucket();
+      inhalt[1] = new Bucket();
       overflows = nullptr;
-      delete[] backup;
     }
 
     size_type erase(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        if (overflows[wert].find_original(key) == true) {
+        if (overflows[wert]->find_original(key) == true) {
           --sz;
-          overflows[wert].erase(overflows[wert].find_element(key));
+          overflows[wert]->erase(overflows[wert]->find_element(key));
           return 1;
         }
       } else {
-        if (inhalt[wert].find_original(key) == true) {
+        if (inhalt[wert]->find_original(key) == true) {
           --sz;
-          inhalt[wert].erase(inhalt[wert].find_element(key));
+          inhalt[wert]->erase(inhalt[wert]->find_element(key));
           return 1;
         }
       }
@@ -178,15 +195,15 @@ public:
     iterator find(const key_type &key) const {
       size_t wert{get_hash_wert(key, d)};
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        if (overflows[wert].find_original(key) == false)
+        if (overflows[wert]->find_original(key) == false)
           return end();
         return {
-            overflows[wert].find(key),
-            overflows[wert].find_element(key), get_hash_wert(key, d + 1), this};
+            overflows[wert]->find(key),
+            overflows[wert]->find_element(key), get_hash_wert(key, d + 1), this};
       } else {
-        if (inhalt[wert].find_original(key) == false)
+        if (inhalt[wert]->find_original(key) == false)
           return end();
-        return {inhalt[wert].find(key), inhalt[wert].find_element(key), wert, this
+        return {inhalt[wert]->find(key), inhalt[wert]->find_element(key), wert, this
         };
       }
     }
@@ -209,12 +226,12 @@ public:
     }
 
     const_iterator begin() const {
-      if (inhalt[0].get_sz() == 0) {
-        const_iterator it {inhalt[0].first(), 0, 0, this};
+      if (inhalt[0]->get_sz() == 0) {
+        const_iterator it {inhalt[0]->first(), 0, 0, this};
         it++;
         return it;
       }
-      else return const_iterator{inhalt[0].first(), 0, 0, this};
+      else return const_iterator{inhalt[0]->first(), 0, 0, this};
     }
     const_iterator end() const {
       return const_iterator{nullptr, SIZE_MAX, max_sz, this};
@@ -285,7 +302,7 @@ public:
     reference operator*() const { return *ptr; }
     pointer operator->() const { return ptr; }
     ForwardIterator &operator++() {
-      Bucket* buckets {nullptr};
+      Bucket** buckets {nullptr};
       if (bucket_counter >= parent->binpow(parent->d)) {
         buckets = parent->overflows;
       } else {
@@ -294,9 +311,9 @@ public:
 
 //    std::cout << "i" << *ptr << std::endl;
       if (bucket_counter >= parent->max_sz) return *this;
-      if (counter + 1 < buckets[bucket_counter % parent->binpow(parent->d)].get_sz()) {
+      if (counter + 1 < buckets[bucket_counter % parent->binpow(parent->d)]->get_sz()) {
         ++counter;
-      } else if (counter + 1 >= buckets[bucket_counter % parent->binpow(parent->d)].get_sz()) {
+      } else if (counter + 1 >= buckets[bucket_counter % parent->binpow(parent->d)]->get_sz()) {
         do {
           counter = 0;
           ++bucket_counter;
@@ -305,11 +322,11 @@ public:
           } else {
             buckets = parent->inhalt;
           }
-        } while (bucket_counter < parent->max_sz && counter >= buckets[bucket_counter % parent->binpow(parent->d)].get_sz());
+        } while (bucket_counter < parent->max_sz && counter >= buckets[bucket_counter % parent->binpow(parent->d)]->get_sz());
       }
       if (bucket_counter < parent->max_sz) {
         size_t temp_counter{counter};
-        Bucket *target_b{&(buckets[bucket_counter % parent->binpow(parent->d)])};
+        Bucket *target_b{buckets[bucket_counter % parent->binpow(parent->d)]};
         if (counter >= N) {
           do {
             temp_counter -= N;
@@ -515,7 +532,7 @@ public:
       b.ueberlauf = nullptr;
       for (size_t i {0}; i < b.sz;) {
         if (get_hash_wert(b.inhalt[i], s->d + 1) != get_hash_wert(b.inhalt[i], s->d)) {
-          s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)].insert(b.inhalt[i], s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)], s, false);
+          s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)]->insert(b.inhalt[i], *(s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)]), s, false);
           b.erase(i);
         } else {
           ++i;
@@ -524,7 +541,7 @@ public:
       while (ueb != nullptr) {
         for (size_t i {0}; i < ueb->sz; i++) {
           if (get_hash_wert(ueb->inhalt[i], s->d + 1) != get_hash_wert(ueb->inhalt[i], s->d)) {
-            s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)].insert(ueb->inhalt[i], s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)], s, false);
+            s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)]->insert(ueb->inhalt[i], *(s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)]), s, false);
           } else {
             b.insert(ueb->inhalt[i], b, s, false);
           }

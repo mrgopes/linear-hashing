@@ -1,0 +1,5 @@
+# ninja log v6
+3809	3881	1722412015790000000	LinearHashing	ff91587da2b45648
+1	1621	1722411735500000000	CMakeFiles/LinearHashing.dir/main.cpp.o	b43c558241e7ba2a
+1	22	1722942518730000000	build.ninja	6720ab987280fefc
+1	3809	1722412011980000000	CMakeFiles/LinearHashing.dir/btest.cpp.o	c841a858752bd7d7
