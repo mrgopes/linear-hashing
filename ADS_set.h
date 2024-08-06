@@ -172,13 +172,13 @@ public:
     size_type erase(const key_type &key) {
       size_t wert {get_hash_wert(key, d)};
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        if (overflows[wert]->find_original(key) == true) {
+        if (overflows[wert]->find(key) != nullptr) {
           --sz;
           overflows[wert]->erase(overflows[wert]->find_element(key));
           return 1;
         }
       } else {
-        if (inhalt[wert]->find_original(key) == true) {
+        if (inhalt[wert]->find(key) != nullptr) {
           --sz;
           inhalt[wert]->erase(inhalt[wert]->find_element(key));
           return 1;
@@ -195,15 +195,19 @@ public:
     iterator find(const key_type &key) const {
       size_t wert{get_hash_wert(key, d)};
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        if (overflows[wert]->find_original(key) == false)
+        size_t index {0};
+        auto find_result = overflows[wert]->find(key, index);
+        if (find_result == nullptr)
           return end();
         return {
-            overflows[wert]->find(key),
-            overflows[wert]->find_element(key), get_hash_wert(key, d + 1), this};
+            find_result,
+            index, get_hash_wert(key, d + 1), this};
       } else {
-        if (inhalt[wert]->find_original(key) == false)
+        size_t index {0};
+        auto find_result = inhalt[wert]->find(key, index);
+        if (find_result == nullptr)
           return end();
-        return {inhalt[wert]->find(key), inhalt[wert]->find_element(key), wert, this
+        return {find_result, index, wert, this
         };
       }
     }
@@ -370,7 +374,6 @@ class ADS_set<Key, N>::Bucket  {
 public:
     Key inhalt[N];
     Bucket* ueberlauf;
-    ADS_set* parent;
 
     size_t sz;
 
@@ -418,21 +421,7 @@ public:
       }
     }
 
-    explicit Bucket(ADS_set* parent = nullptr): inhalt{}, ueberlauf{nullptr}, parent{parent}, sz{0} {}
-
-    Bucket& operator=(const Bucket& b) {
-      if (this == &b) return *this;
-      for (size_t i {0}; i < b.sz; ++i) {
-        inhalt[i] = b.inhalt[i];
-      }
-      if (b.ueberlauf && !ueberlauf)
-      {
-        ueberlauf = new Bucket{};
-        *ueberlauf = *b.ueberlauf;
-      }
-      sz = b.sz;
-      return *this;
-    }
+    explicit Bucket(): inhalt{}, ueberlauf{nullptr}, sz{0} {}
 
     bool operator==(const Bucket& b) {
       return ueberlauf == b.ueberlauf && inhalt == b.inhalt && sz == b.sz;
@@ -467,6 +456,29 @@ public:
       return nullptr;
     }
 
+    key_type* find(key_type key, size_t& index) {
+      for (size_t i {0}; i < sz; i++) {
+        if (key_equal{}(inhalt[i], key)) {
+          index = i;
+          return &(inhalt[i]);
+        }
+      }
+      size_t i_counter {sz};
+      Bucket* ueb {ueberlauf};
+      while (ueb != nullptr) {
+        for (size_t j {0}; j < ueb->sz; j++) {
+          if (key_equal{}(ueb->inhalt[j], key)) {
+            index = i_counter + j;
+            return &ueb->inhalt[j];
+          }
+        }
+        i_counter += ueb->sz;
+        ueb = ueb->ueberlauf;
+      }
+      index = i_counter;
+      return nullptr;
+    }
+
     key_type* first() {
       return &(inhalt[0]);
     }
@@ -487,41 +499,29 @@ public:
       }
     }
 
-    bool find_original(key_type key) const {
-      for (size_t i {0}; i < sz; i++) {
-        if (key_equal{}(inhalt[i], key)) return true;
-      }
-      Bucket* ueb {ueberlauf};
-      while (ueb != nullptr) {
-        for (size_t j {0}; j < ueb->sz; j++) {
-          if (key_equal{}(ueb->inhalt[j], key)) return true;
-        }
-        ueb = ueb->ueberlauf;
-      }
-      return false;
-    }
-
     Bucket(std::initializer_list<key_type> ilist): Bucket() {
       insert(ilist);
     }
 
     // auslagern
-    static bool insert(Key item, Bucket& b, ADS_set* s, bool allow_split = true) {
-      for (size_t i {0}; i < b.sz; i++) {
-        if (key_equal{}(b.inhalt[i], item)) return false;
+    static bool insert(Key item, Bucket& b, ADS_set* s, bool allow_split = true, bool unsichert = true) {
+      if (unsichert) {
+        for (size_t i{0}; i < b.sz; i++) {
+          if (key_equal{}(b.inhalt[i], item)) return false;
+        }
       }
       if (!b.full()) {
         b.inhalt[(b.sz)++] = item;
         return &(b.inhalt[b.sz]);
       } else {
-        if (!b.ueberlauf) b.ueberlauf = new Bucket(nullptr);
-        bool result = b.ueberlauf->insert(item, *(b.ueberlauf), s, false);
+        if (!b.ueberlauf) b.ueberlauf = new Bucket();
+        bool result = b.ueberlauf->insert(item, *(b.ueberlauf), s, false, unsichert);
         if (result && allow_split) s->global_split();
         return result;
       }
     }
 
-    bool full() {
+    inline bool full() {
       return sz == N;
     }
 
@@ -532,7 +532,7 @@ public:
       b.ueberlauf = nullptr;
       for (size_t i {0}; i < b.sz;) {
         if (get_hash_wert(b.inhalt[i], s->d + 1) != get_hash_wert(b.inhalt[i], s->d)) {
-          s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)]->insert(b.inhalt[i], *(s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)]), s, false);
+          Bucket::insert(b.inhalt[i], *(s->overflows[get_hash_wert(b.inhalt[i], s->d+1) - binpow(s->d)]), s, false, false);
           b.erase(i);
         } else {
           ++i;
@@ -541,9 +541,9 @@ public:
       while (ueb != nullptr) {
         for (size_t i {0}; i < ueb->sz; i++) {
           if (get_hash_wert(ueb->inhalt[i], s->d + 1) != get_hash_wert(ueb->inhalt[i], s->d)) {
-            s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)]->insert(ueb->inhalt[i], *(s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)]), s, false);
+            Bucket::insert(ueb->inhalt[i], *(s->overflows[get_hash_wert(ueb->inhalt[i], s->d+1) - binpow(s->d)]), s, false, false);
           } else {
-            b.insert(ueb->inhalt[i], b, s, false);
+            Bucket::insert(ueb->inhalt[i], b, s, false, false);
           }
         }
         // ... vllt irgendwann mal den alten ueb deleten?
