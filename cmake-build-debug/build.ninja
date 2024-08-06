@@ -49,9 +49,9 @@ cmake_ninja_workdir = /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/cmake-bu
 
 build cmake_object_order_depends_target_LinearHashing: phony || CMakeFiles/LinearHashing.dir
 
-build CMakeFiles/LinearHashing.dir/btest.cpp.o: CXX_COMPILER__LinearHashing_unscanned_Debug /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/btest.cpp || cmake_object_order_depends_target_LinearHashing
-  DEP_FILE = CMakeFiles/LinearHashing.dir/btest.cpp.o.d
-  FLAGS = -g -fdiagnostics-color=always -O3 -std=c++17 -pedantic-errors -DPH2 -DETYPE=unsigned -DSIZE=1
+build CMakeFiles/LinearHashing.dir/main.cpp.o: CXX_COMPILER__LinearHashing_unscanned_Debug /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/main.cpp || cmake_object_order_depends_target_LinearHashing
+  DEP_FILE = CMakeFiles/LinearHashing.dir/main.cpp.o.d
+  FLAGS = -g -fdiagnostics-color=always -std=c++17 -DPH2 -DETYPE=unsigned -DSIZE=1
   OBJECT_DIR = CMakeFiles/LinearHashing.dir
   OBJECT_FILE_DIR = CMakeFiles/LinearHashing.dir
 
@@ -63,7 +63,7 @@ build CMakeFiles/LinearHashing.dir/btest.cpp.o: CXX_COMPILER__LinearHashing_unsc
 #############################################
 # Link the executable LinearHashing
 
-build LinearHashing: CXX_EXECUTABLE_LINKER__LinearHashing_Debug CMakeFiles/LinearHashing.dir/btest.cpp.o
+build LinearHashing: CXX_EXECUTABLE_LINKER__LinearHashing_Debug CMakeFiles/LinearHashing.dir/main.cpp.o
   FLAGS = -g
   OBJECT_DIR = CMakeFiles/LinearHashing.dir
   POST_BUILD = :

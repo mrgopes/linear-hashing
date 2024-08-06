@@ -35,7 +35,7 @@ public:
       insert(ilist.begin(), ilist.end());
     }
 
-    ADS_set(): d{1}, max_sz{2}, inhalt{new Bucket*[2]}, overflows{nullptr}, nextToSplit{0}, sz{0} {
+    ADS_set(): d{1}, max_sz{2}, inhalt{new Bucket*[2]}, overflows{new Bucket*[2]}, nextToSplit{0}, sz{0} {
       inhalt[0] = new Bucket();
       inhalt[1] = new Bucket();
     }
@@ -53,15 +53,7 @@ private:
 
     void overflows_erweitern() {
       ++max_sz;
-
-      Bucket** backup = overflows;
-      overflows = new Bucket*[max_sz - binpow(d)];
-      for (size_t i {0}; i < max_sz - binpow(d) - 1; ++i) {
-        overflows[i] = backup[i];
-      }
       overflows[max_sz - binpow(d) - 1] = new Bucket();
-
-      delete[] backup;
     }
 
     void overflow_zusammenfuegen() {
@@ -78,7 +70,7 @@ private:
       delete[] overflows;
       delete[] backup;
 
-      overflows = nullptr;
+      overflows = new Bucket*[max_sz];
     }
 public:
     ADS_set(std::initializer_list<key_type> ilist): ADS_set() {
@@ -127,14 +119,14 @@ public:
       return sz == 0;
     }
 
-    std::pair<iterator,bool> insert(const key_type &key) {
+    std::pair<iterator,bool> insert(const key_type &key, bool allow_split = true) {
       size_t wert {get_hash_wert(key, d)};
       bool result;
       if (wert < nextToSplit && wert != get_hash_wert(key, d + 1)) {
-        result = Bucket::insert(key, *(overflows[wert]), this);
+        result = Bucket::insert(key, *(overflows[wert]), this, allow_split);
       }
       else {
-        result = Bucket::insert(key, *(inhalt[wert]), this);
+        result = Bucket::insert(key, *(inhalt[wert]), this, allow_split);
       }
       sz += result;
 
@@ -166,7 +158,7 @@ public:
       inhalt = new Bucket*[2];
       inhalt[0] = new Bucket();
       inhalt[1] = new Bucket();
-      overflows = nullptr;
+      overflows = new Bucket*[max_sz];
     }
 
     size_type erase(const key_type &key) {
@@ -212,14 +204,6 @@ public:
       }
     }
 
-    /*
-     *     size_t d;
-    size_t max_sz;
-    Bucket* inhalt;
-    size_t nextToSplit;
-    size_t sz;
-     */
-
     void swap(ADS_set &other) {
       std::swap(d, other.d);
       std::swap(max_sz, other.max_sz);
@@ -244,11 +228,11 @@ public:
     void dump(std::ostream &o = std::cerr) const {
       o << "d: " << d << ", allozierte Buckets insgesamt: " << max_sz << std::endl;
       for (size_t i {0}; i < binpow(d); ++i) {
-        o << "Bucket Nr. " << i << " lokales d: " << ((i >= nextToSplit && i < binpow(d)) ? d : d+1) << " " << inhalt[i] << std::endl;
+        o << "Bucket Nr. " << i << " lokales d: " << ((i >= nextToSplit && i < binpow(d)) ? d : d+1) << " " << *(inhalt[i]) << std::endl;
       }
-      o << "Splitting buckets: " << std::endl;
+      o << "Ueberlauf buckets: " << std::endl;
       for (size_t i {binpow(d)}; i < max_sz; ++i) {
-        o << "Bucket Nr. " << i << " " << overflows[i - binpow(d)] << std::endl;
+        o << "Bucket Nr. " << i << " " << *(overflows[i - binpow(d)]) << std::endl;
       }
       o << "Size: " << size() << std::endl;
     }
@@ -272,13 +256,6 @@ public:
 
     static size_t binpow(size_t power) {
       return 1 << power;
-    }
-
-    size_t find_bucket(Bucket* b) const {
-      for (size_t i{0}; i < max_sz; ++i) {
-        if (inhalt[i] == b) return i;
-      }
-      return max_sz;
     }
 };
 
@@ -313,7 +290,6 @@ public:
         buckets = parent->inhalt;
       }
 
-//    std::cout << "i" << *ptr << std::endl;
       if (bucket_counter >= parent->max_sz) return *this;
       if (counter + 1 < buckets[bucket_counter % parent->binpow(parent->d)]->get_sz()) {
         ++counter;
@@ -446,12 +422,10 @@ public:
       for (size_t i {0}; i < sz; i++) {
         if (key_equal{}(inhalt[i], key)) return &(inhalt[i]);
       }
-      Bucket* ueb {ueberlauf};
-      while (ueb != nullptr) {
+      for (Bucket* ueb {ueberlauf}; ueb != nullptr; ueb = ueb->ueberlauf) {
         for (size_t j {0}; j < ueb->sz; j++) {
           if (key_equal{}(ueb->inhalt[j], key)) return &ueb->inhalt[j];
         }
-        ueb = ueb->ueberlauf;
       }
       return nullptr;
     }
@@ -503,7 +477,6 @@ public:
       insert(ilist);
     }
 
-    // auslagern
     static bool insert(Key item, Bucket& b, ADS_set* s, bool allow_split = true, bool unsichert = true) {
       if (unsichert) {
         for (size_t i{0}; i < b.sz; i++) {
@@ -525,8 +498,8 @@ public:
       return sz == N;
     }
 
-    // auslagern
     static void split(Bucket& b, ADS_set* s) {
+
       Bucket* ueb {b.ueberlauf};
       Bucket* first_ueb{b.ueberlauf};
       b.ueberlauf = nullptr;
@@ -546,7 +519,6 @@ public:
             Bucket::insert(ueb->inhalt[i], b, s, false, false);
           }
         }
-        // ... vllt irgendwann mal den alten ueb deleten?
         ueb = ueb->ueberlauf;
       }
       delete first_ueb;
