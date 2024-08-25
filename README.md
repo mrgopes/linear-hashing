@@ -26,13 +26,11 @@ The Abschlussklausur implementation (a reverse mode for the iterator) is not inc
 
 ## Performance ratings
 
-Bewertung Zeit	
+Bewertung Zeit		1.02
 
-1.02
+Bewertung Speicher	0.74
 
-Bewertung Speicher	
-
-0.74
+Final rating was 7.5/10 points.
 
 ## Improvement suggestions
 
