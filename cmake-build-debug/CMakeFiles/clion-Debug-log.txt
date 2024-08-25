@@ -1,4 +1,4 @@
 /home/mrgopes/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/mrgopes/.local/share/JetBrains/Toolbox/apps/clion/bin/ninja/linux/x64/ninja -G Ninja -S /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing -B /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/cmake-build-debug
--- Configuring done (0.1s)
+-- Configuring done (0.0s)
 -- Generating done (0.0s)
 -- Build files have been written to: /media/mrgopes/Storage/UNI/SS24/ADS/LinearHashing/cmake-build-debug
