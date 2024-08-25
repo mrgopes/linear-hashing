@@ -1,0 +1,9 @@
+cmake-build-debug
+cmake-build-debug/*
+btest
+btest.cpp
+input.in
+main
+main.cpp
+simpletest
+simpletest.cpp
