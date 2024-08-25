@@ -37,3 +37,7 @@ Bewertung Speicher
 ## Improvement suggestions
 
 Improvements in the performance of the implementation could possibly be achieved through a single pointer array (merging the overflow pointer array and the pointer array for the current values).
+
+## Please note
+
+As this was a university assignment, I programmed it under some time pressure. After submitting it, I didn't really bother to organise or comment the code, so it might be a challenge to comprehend.
